@@ -1,6 +1,6 @@
 # EIBE SCM Dashboard
 
-> **Standalone Local ERP** for Supply Chain Management — Data-driven Forecasting & Inventory Optimization
+> <strong>Standalone Local ERP</strong> for Supply Chain Management — Data-driven Forecasting & Inventory Optimization
 
 <p align="center">
   <img src="./portfolio/02_dashboard.png" alt="EIBE SCM Dashboard" width="100%"/>
@@ -10,17 +10,17 @@
 
 ## Overview
 
-EIBE SCM Dashboard는 산재된 물류 파이프라인(발주 → 생산 → 입고) 데이터를 **하나의 뷰로 통합**하고, 과거 판매/출고 데이터를 기반으로 한 **데이터 주도적 발주 예측(Data-driven Forecasting)**을 제공하는 독립형 로컬 ERP 시스템입니다.
+EIBE SCM Dashboard는 산재된 물류 파이프라인(발주 → 생산 → 입고) 데이터를 <strong>하나의 뷰로 통합</strong>하고, 과거 판매/출고 데이터를 기반으로 한 <strong>데이터 주도적 발주 예측(Data-driven Forecasting)</strong>을 제공하는 독립형 로컬 ERP 시스템입니다.
 
-기존에 수많은 엑셀 파일을 이메일로 주고받으며 수기 매칭과 직관에 의존해왔던 SCM 프로세스를 개선하여, 실무자가 **전략적 의사 결정**에 집중할 수 있도록 돕습니다.
+기존에 수많은 엑셀 파일을 이메일로 주고받으며 수기 매칭과 직관에 의존해왔던 SCM 프로세스를 개선하여, 실무자가 <strong>전략적 의사 결정</strong>에 집중할 수 있도록 돕습니다.
 
 ### Key Highlights
 
-- **Zero Cloud Cost**: 사내 PC에서 완전히 독립 실행 — 외부 네트워크 불필요
-- **Data-driven Forecasting**: 사칙연산 기반의 투명한 통계 모델로 발주 제안
-- **Real-time Simulation**: 수량/가중치 변경 시 재고일수 히트맵 즉시 반응
-- **Multi-brand Management**: 식품(FOOD)과 전자제품(ELECTRONICS) 동시 관리, 브랜드별 동적 필터링
-- **Dark Mode**: 완벽한 다크모드 지원
+- <strong>Zero Cloud Cost</strong>: 사내 PC에서 완전히 독립 실행 — 외부 네트워크 불필요
+- <strong>Data-driven Forecasting</strong>: 사칙연산 기반의 투명한 통계 모델로 발주 제안
+- <strong>Real-time Simulation</strong>: 수량/가중치 변경 시 재고일수 히트맵 즉시 반응
+- <strong>Multi-brand Management</strong>: 식품(FOOD)과 전자제품(ELECTRONICS) 동시 관리, 브랜드별 동적 필터링
+- <strong>Dark Mode</strong>: 완벽한 다크모드 지원
 
 ---
 
@@ -68,21 +68,19 @@ EIBE SCM Dashboard는 산재된 물류 파이프라인(발주 → 생산 → 입
   <img src="./portfolio/inventory_filters.gif" alt="Inventory Filters" width="45%"/>
 </p>
 
-> 더 많은 스크린샷은 [`portfolio/`](portfolio/) 폴더에서 확인할 수 있습니다.
-
 ---
 
 ## Tech Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Frontend** | HTML5, CSS3, Vanilla JS | 프레임워크 없이 경량 UI 구현 |
-| **Charts** | Chart.js 4.x (CDN) | KPI 시각화, 재고 추세, 히트맵 |
-| **Backend** | Python 3.11, FastAPI, Uvicorn | RESTful API 서버, 비동기 처리 |
-| **Database** | SQLite 3 (3NF) | 관계형 스키마, 백업 용이 |
-| **Auth** | JWT (python-jose), bcrypt | 토큰 기반 인증, 비밀번호 해싱 |
-| **Scheduling** | APScheduler | 자동 DB 스냅샷 백업 |
-| **Excel I/O** | pandas, openpyxl | 엑셀 업로드/다운로드 파이프라인 |
+| <strong>Frontend</strong> | HTML5, CSS3, Vanilla JS | 프레임워크 없이 경량 UI 구현 |
+| <strong>Charts</strong> | Chart.js 4.x (CDN) | KPI 시각화, 재고 추세, 히트맵 |
+| <strong>Backend</strong> | Python 3.11, FastAPI, Uvicorn | RESTful API 서버, 비동기 처리 |
+| <strong>Database</strong> | SQLite 3 (3NF) | 관계형 스키마, 백업 용이 |
+| <strong>Auth</strong> | JWT (python-jose), bcrypt | 토큰 기반 인증, 비밀번호 해싱 |
+| <strong>Scheduling</strong> | APScheduler | 자동 DB 스냅샷 백업 |
+| <strong>Excel I/O</strong> | pandas, openpyxl | 엑셀 업로드/다운로드 파이프라인 |
 
 ---
 
@@ -163,8 +161,8 @@ SPA 패턴의 해시 네비게이션으로 구성된 설정 페이지 — 데이
 ## Quick Start
 
 ### Prerequisites
-- **Python 3.11+**
-- **Chrome** (스크린샷 캡처 시)
+- <strong>Python 3.11+</strong>
+- <strong>Chrome</strong> (스크린샷 캡처 시)
 
 ### 1. Clone & Setup
 
@@ -175,12 +173,12 @@ cd Eibe-SCM_Dashboard
 
 ### 2. Run Server
 
-**Windows** — 더블클릭으로 실행:
+<strong>Windows</strong> — 더블클릭으로 실행:
 ```bash
 start_server.bat
 ```
 
-**Manual**:
+<strong>Manual</strong>:
 ```bash
 python -m venv venv
 .\venv\Scripts\activate      # Windows
@@ -193,7 +191,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 http://localhost:8000
 ```
 
-**Default Login:**
+<strong>Default Login:</strong>
 | Field | Value |
 |-------|-------|
 | ID | `admin` |
@@ -281,13 +279,13 @@ http://localhost:8000/docs
 ## Design Philosophy
 
 ### 1. Transparent Forecasting
-복잡한 딥러닝이 아닌, 실무자가 이해 가능한 **사칙연산 기반 통계 모델**을 지향합니다. 최근 출고량의 가중평균을 통해 일/주간 예상 소진율을 도출하며, 예측 근거가 항상 투명하게 노출됩니다.
+복잡한 딥러닝이 아닌, 실무자가 이해 가능한 <strong>사칙연산 기반 통계 모델</strong>을 지향합니다. 최근 출고량의 가중평균을 통해 일/주간 예상 소진율을 도출하며, 예측 근거가 항상 투명하게 노출됩니다.
 
 ### 2. Cost-based Asset Valuation
-마스터 정보의 예상 단가가 아닌, 실제 입고 시 지불한 **인보이스 결제 원화 금액**을 역추적하여 정확한 재고 자산 금액과 폐기 리스크 비용을 산출합니다.
+마스터 정보의 예상 단가가 아닌, 실제 입고 시 지불한 <strong>인보이스 결제 원화 금액</strong>을 역추적하여 정확한 재고 자산 금액과 폐기 리스크 비용을 산출합니다.
 
 ### 3. Instant Feedback Loop
-수량을 입력하는 즉시 재고일수가 색상 히트맵으로 반영됩니다. 별도 "시뮬레이션 실행" 버튼 없이, 모든 클라이언트 사이드 계산은 **실시간(Reactive)**으로 동작합니다.
+수량을 입력하는 즉시 재고일수가 색상 히트맵으로 반영됩니다. 별도 "시뮬레이션 실행" 버튼 없이, 모든 클라이언트 사이드 계산은 <strong>실시간(Reactive)</strong>으로 동작합니다.
 
 ### 4. Zero Framework Frontend
 React, Vue 등 프레임워크 없이 순수 HTML/CSS/JS만으로 구현하여 빌드 프로세스 없이 즉시 구동됩니다. 유지보수 시 별도 도구 체인이 필요하지 않습니다.
@@ -296,21 +294,12 @@ React, Vue 등 프레임워크 없이 순수 HTML/CSS/JS만으로 구현하여 �
 
 ## Development Notes
 
-- **Null Safety**: 모든 API 응답에 `null`/`undefined` 가드 적용
-- **FEFO**: 선입선출(First Expiry, First Out) 기반 유통기한 관리
-- **Week Label Format**: `Jun-W3` 형식의 영문 월약어 3글자 패턴
-- **Date Format**: `2026년 7월 12일 (토)` 형식
-- **Brand Dynamic Filter**: 설정에서 브랜드 추가 시 필터 자동 업데이트
-- **Auto Backup**: APScheduler로 일정 주기 DB 스냅샷 자동 생성
+- <strong>Null Safety</strong>: 모든 API 응답에 `null`/`undefined` 가드 적용
+- <strong>FEFO</strong>: 선입선출(First Expiry, First Out) 기반 유통기한 관리
+- <strong>Week Label Format</strong>: `Jun-W3` 형식의 영문 월약어 3글자 패턴
+- <strong>Date Format</strong>: `2026년 7월 12일 (토)` 형식
+- <strong>Brand Dynamic Filter</strong>: 설정에서 브랜드 추가 시 필터 자동 업데이트
+- <strong>Auto Backup</strong>: APScheduler로 일정 주기 DB 스냅샷 자동 생성
 
 ---
 
-## License
-
-This project is proprietary software developed for EIBE Corp. internal use.
-
----
-
-<p align="center">
-  <sub>Built with Python, FastAPI, and vanilla JavaScript</sub>
-</p>
