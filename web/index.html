@@ -162,7 +162,7 @@
                         const weeklyDemand = inv.weekly_outflow || inv.avg_weekly_demand || 0;
                         if (weeklyDemand > 0) {
                             const weeksLeft = (inv.current_can_qty || 0) / weeklyDemand;
-                            if (weeksLeft < 4) riskCount++;
+                            if (weeksLeft < 6) riskCount++;
                         }
                     });
                     document.getElementById('kpi-risk-count').textContent = riskCount || '2';

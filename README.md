@@ -3,7 +3,7 @@
 > **Standalone Local ERP** for Supply Chain Management — Data-driven Forecasting & Inventory Optimization
 
 <p align="center">
-  <img src="portfolio/02_dashboard.png" alt="EIBE SCM Dashboard" width="100%"/>
+  <img src="./portfolio/02_dashboard.png" alt="EIBE SCM Dashboard" width="100%"/>
 </p>
 
 ---
@@ -32,34 +32,41 @@ EIBE SCM Dashboard는 산재된 물류 파이프라인(발주 → 생산 → 입
     <td align="center"><strong>Dashboard</strong></td>
   </tr>
   <tr>
-    <td><img src="portfolio/01_login.png" width="400"/></td>
-    <td><img src="portfolio/02_dashboard.png" width="400"/></td>
+    <td><img src="./portfolio/01_login.png" width="400"/></td>
+    <td><img src="./portfolio/02_dashboard.png" width="400"/></td>
   </tr>
   <tr>
     <td align="center"><strong>Inventory</strong></td>
     <td align="center"><strong>Expiry Management</strong></td>
   </tr>
   <tr>
-    <td><img src="portfolio/03_inventory.png" width="400"/></td>
-    <td><img src="portfolio/04_expiry.png" width="400"/></td>
+    <td><img src="./portfolio/03_inventory.png" width="400"/></td>
+    <td><img src="./portfolio/04_expiry.png" width="400"/></td>
   </tr>
   <tr>
     <td align="center"><strong>Order Planning</strong></td>
     <td align="center"><strong>Inbound Management</strong></td>
   </tr>
   <tr>
-    <td><img src="portfolio/05_order_plan.png" width="400"/></td>
-    <td><img src="portfolio/06_matching.png" width="400"/></td>
+    <td><img src="./portfolio/05_order_plan.png" width="400"/></td>
+    <td><img src="./portfolio/06_matching.png" width="400"/></td>
   </tr>
   <tr>
     <td align="center"><strong>Settings</strong></td>
     <td align="center"><strong>Dark Mode</strong></td>
   </tr>
   <tr>
-    <td><img src="portfolio/07_settings.png" width="400"/></td>
-    <td><img src="portfolio/08_dashboard_dark.png" width="400"/></td>
+    <td><img src="./portfolio/07_settings.png" width="400"/></td>
+    <td><img src="./portfolio/08_dashboard_dark.png" width="400"/></td>
   </tr>
 </table>
+
+### Live Interactions (GIFs)
+
+<p align="center">
+  <img src="./portfolio/order_plan_simulation.gif" alt="Order Plan Simulation" width="45%" style="margin-right: 5%;"/>
+  <img src="./portfolio/inventory_filters.gif" alt="Inventory Filters" width="45%"/>
+</p>
 
 > 더 많은 스크린샷은 [`portfolio/`](portfolio/) 폴더에서 확인할 수 있습니다.
 
@@ -81,34 +88,39 @@ EIBE SCM Dashboard는 산재된 물류 파이프라인(발주 → 생산 → 입
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Browser (Client)                      │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
-│  │index.html│ │inventory │ │order_plan│ │ expiry   │   │
-│  │Dashboard │ │  .html   │ │  .html   │ │  .html   │   │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘   │
-│       │             │            │             │         │
-│       └─────────────┼────────────┼─────────────┘         │
-│                     │ REST API (JSON)                     │
-├─────────────────────┼───────────────────────────────────┤
-│              FastAPI Server (Uvicorn)                     │
-│  ┌──────────────────┼───────────────────────────┐       │
-│  │            API Router Layer                    │       │
-│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │       │
-│  │  │  auth  │ │pipeline│ │  inv   │ │ master │ │       │
-│  │  └────────┘ └────────┘ └────────┘ └────────┘ │       │
-│  ├────────────────────────────────────────────────┤       │
-│  │            Core Business Logic                 │       │
-│  │  ┌────────────┐ ┌──────────┐ ┌─────────────┐ │       │
-│  │  │forecasting │ │excel_    │ │  snapshot    │ │       │
-│  │  │  .py       │ │parser.py │ │    .py       │ │       │
-│  │  └────────────┘ └──────────┘ └─────────────┘ │       │
-│  ├────────────────────────────────────────────────┤       │
-│  │            Data Layer (SQLAlchemy ORM)         │       │
-│  │         SQLite 3 — data/local_erp.db           │       │
-│  └────────────────────────────────────────────────┘       │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Client["Browser (Client - Pure HTML/CSS/JS)"]
+        UI1["index.html<br>(Dashboard)"]
+        UI2["inventory.html"]
+        UI3["order_plan.html"]
+        UI4["expiry.html"]
+        UI5["matching.html"]
+    end
+
+    subgraph Backend["FastAPI Server (Uvicorn)"]
+        subgraph Routers["API Router Layer"]
+            R1["auth.py"]
+            R2["pipeline.py"]
+            R3["inventory.py"]
+            R4["master.py"]
+        end
+        
+        subgraph CoreLogic["Core Business Logic"]
+            C1["forecasting.py<br>(Data-driven Forecasting)"]
+            C2["excel_parser.py<br>(Excel I/O)"]
+            C3["snapshot.py<br>(Auto Backup)"]
+        end
+    end
+
+    subgraph DataLayer["Data Layer (SQLAlchemy ORM)"]
+        DB[("SQLite 3<br>(data/local_erp.db)")]
+    end
+
+    Client -- "REST API (JSON)" --> Routers
+    Routers --> CoreLogic
+    CoreLogic --> DB
+    Routers --> DB
 ```
 
 ---

@@ -44,9 +44,14 @@ def get_orders(
     if order_month:
         query = query.filter(OrderDB.order_month == order_month)
     orders = query.order_by(OrderDB.id.desc()).all()
+    
+    # N+1 쿼리 방지: In-memory Dict 활용
+    product_codes = list(set([o.product_code for o in orders if o.product_code]))
+    products = db.query(ProductDB).filter(ProductDB.product_code.in_(product_codes)).all()
+    prod_dict = {p.product_code: p.product_name for p in products}
+    
     result = []
     for o in orders:
-        prod = db.query(ProductDB).filter(ProductDB.product_code == o.product_code).first()
         result.append(
             OrderResponse(
                 id=o.id,
@@ -54,7 +59,7 @@ def get_orders(
                 product_code=o.product_code,
                 order_qty=o.order_qty,
                 created_at=o.created_at,
-                product_name=prod.product_name if prod else None,
+                product_name=prod_dict.get(o.product_code),
             )
         )
     return result
@@ -113,9 +118,13 @@ def get_productions(
     if product_code:
         query = query.filter(ProductionDB.product_code == product_code)
     productions = query.order_by(ProductionDB.id.desc()).all()
+    
+    product_codes = list(set([p.product_code for p in productions if p.product_code]))
+    products = db.query(ProductDB).filter(ProductDB.product_code.in_(product_codes)).all()
+    prod_dict = {pr.product_code: pr.product_name for pr in products}
+    
     result = []
     for p in productions:
-        prod = db.query(ProductDB).filter(ProductDB.product_code == p.product_code).first()
         result.append(
             ProductionResponse(
                 id=p.id,
@@ -126,7 +135,7 @@ def get_productions(
                 product_code=p.product_code,
                 matched_order_id=p.matched_order_id,
                 created_at=p.created_at,
-                product_name=prod.product_name if prod else None,
+                product_name=prod_dict.get(p.product_code),
             )
         )
     return result
@@ -219,7 +228,7 @@ def create_inbound(
 @router.put("/api/inbound/{inbound_id}", response_model=InboundResponse, tags=["입고 파이프라인"])
 def update_inbound(
     inbound_id: int,
-    data: dict,
+    inbound_data: InboundUpdate,
     current_user: UserAccount = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -227,22 +236,19 @@ def update_inbound(
     db_inbound = db.query(InboundDB).filter(InboundDB.id == inbound_id).first()
     if not db_inbound:
         raise HTTPException(status_code=404, detail="입고 데이터를 찾을 수 없습니다")
+    
+    data = inbound_data.model_dump(exclude_unset=True)
+    
     # 상태 변경 유효성 검증
     if "status" in data and data["status"] not in VALID_INBOUND_STATUSES:
         raise HTTPException(
             status_code=400,
             detail=f"유효하지 않은 상태입니다. 허용: {VALID_INBOUND_STATUSES}",
         )
-    allowed_fields = {
-        "invoice_no", "bl_no", "mapping_value", "purchase_code", "production_code", 
-        "shipping_date", "korea_arrival_date", "eta", "manufacture_date", "expiry_date", 
-        "carton_qty", "can_qty", "unit_price", "total_price", "payment_date", "invoice_date", 
-        "exchange_rate", "payment_amount_krw", "arrival_wh_id", "matched_production_id",
-        "product_code", "status",
-    }
-    for key, value in data.items():
-        if key in allowed_fields:
-            setattr(db_inbound, key, value)
+    
+    for k, v in data.items():
+        setattr(db_inbound, k, v)
+        
     db.commit()
     db.refresh(db_inbound)
     return db_inbound

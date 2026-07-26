@@ -15,7 +15,7 @@
             <div class="page-header">
                 <h1 class="page-title" id="main-page-title">발주</h1>
             </div>
-            <div class="filter-group" style="margin-bottom: var(--space-md); display: flex; justify-content: flex-start;">
+            <div class="filter-group">
                 <select id="brand-filter" class="form-select" style="width: 200px;"></select>
             </div>
 
@@ -162,7 +162,7 @@
                 </div>
                 <div class="card-body collapsible-body" id="heatmap-body">
                     <p style="color: var(--text-muted); margin-bottom: var(--space-md); font-size: 0.82rem;">
-                        적정 재고일수: 약 90일(3개월). <strong style="color: var(--accent-red);">빨강(0~1개월)</strong> / <strong style="color: var(--accent-amber);">노랑(1~2개월)</strong> / <strong style="color: var(--accent-green);">녹색(2~3개월)</strong> / <strong style="color: #1b64da;">파랑(3개월 이상, 과잉)</strong>
+                        적정 재고일수: 약 90일(3개월). <strong style="color: var(--accent-red);">빨강(6주 미만, 위험)</strong> / <strong style="color: var(--accent-amber);">노랑(6~9주, 주의)</strong> / <strong style="color: var(--accent-green);">녹색(9~13주, 적정)</strong> / <strong style="color: #1b64da;">파랑(13주 이상, 과잉)</strong>
                     </p>
                     <div class="data-table-wrapper">
                         <table class="heatmap-table" id="heatmap-table">
@@ -342,7 +342,7 @@
                     return;
                 }
                 const ids = Array.from(checked).map(cb => cb.closest('tr').dataset.productId);
-                const names = Array.from(checked).map(cb => cb.closest('tr').querySelector('td:nth-child(2)')?.textContent || '');
+
                 if (!confirm(`선택된 ${ids.length}건 발주 계획을 삭제하시겠습니까?`)) return;
                 const targetMonth = document.getElementById('order-month-filter')?.value || this.getTargetMonth();
                 try {

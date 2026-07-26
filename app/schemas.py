@@ -223,6 +223,30 @@ class InboundCreate(BaseModel):
     product_code: Optional[str] = None
     status: str = Field(default="생산국출발")
 
+class InboundUpdate(BaseModel):
+    invoice_no: Optional[str] = None
+    bl_no: Optional[str] = None
+    mapping_value: Optional[str] = None
+    purchase_code: Optional[str] = None
+    production_code: Optional[str] = None
+    shipping_date: Optional[str] = None
+    korea_arrival_date: Optional[str] = None
+    eta: Optional[str] = None
+    manufacture_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    carton_qty: Optional[int] = None
+    can_qty: Optional[int] = None
+    unit_price: Optional[float] = None
+    total_price: Optional[float] = None
+    payment_date: Optional[str] = None
+    invoice_date: Optional[str] = None
+    exchange_rate: Optional[float] = None
+    payment_amount_krw: Optional[int] = None
+    arrival_wh_id: Optional[int] = None
+    matched_production_id: Optional[int] = None
+    product_code: Optional[str] = None
+    status: Optional[str] = None
+
 class InboundResponse(InboundCreate):
     id: int
     created_at: Optional[str] = None
@@ -262,6 +286,7 @@ class OrderPlanCreate(BaseModel):
     arrival_month: Optional[str] = None
     product_id: int
     user_modified_qty: int = Field(default=0, ge=0)
+    version: int = Field(default=0, description="Optimistic locking version")
 
 class OrderPlanBulkSave(BaseModel):
     plans: List[OrderPlanCreate]

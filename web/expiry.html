@@ -14,7 +14,7 @@
             <div class="page-header">
                 <h1 class="page-title" id="main-page-title">폐기</h1>
             </div>
-            <div class="filter-group" style="margin-bottom: var(--space-md); display: flex; justify-content: flex-start;">
+            <div class="filter-group">
                 <select id="brand-filter" class="form-select" style="width: 200px;"></select>
             </div>
 
@@ -152,10 +152,10 @@
                             <td>${d.warehouse_name || d.warehouse}</td>
                             <td>${d.product_name}</td>
                             <td>${d.expiry_date}</td>
-                            <td class="text-right mono">${Format.number(d.qty)}</td>
+                            <td class="text-right mono">${Format.number(d.qty_cans || d.qty || 0)}</td>
                             <td class="text-right"><span class="badge ${d.remaining_days <= 30 ? 'badge--danger' : 'badge--warning'}">${d.remaining_days}일</span></td>
-                            <td class="text-center">-</td>
-                            <td class="text-right mono">-</td>
+                            <td class="text-center">${d.depletion_date || '-'}</td>
+                            <td class="text-right mono">${d.additional_sales_required ? Format.number(d.additional_sales_required) : '-'}</td>
                             <td class="text-right mono" style="font-weight:600; color: ${valueColor};">${Format.currency(d.disposal_value)}</td>
                         </tr>`;
                 }).join('');

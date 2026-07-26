@@ -19,7 +19,7 @@
             <div class="page-header">
                 <h1 class="page-title" id="main-page-title">현재고</h1>
             </div>
-            <div class="filter-group" style="margin-bottom: var(--space-md); display: flex; justify-content: flex-start;">
+            <div class="filter-group">
                 <select id="brand-filter" class="form-select" style="width: 200px;"></select>
             </div>
 
@@ -81,12 +81,44 @@
                 </div>
             </section>
 
+            <!-- 이관 시뮬레이터 섹션 -->
+            <section class="card" style="margin-top: var(--space-xl);">
+                <div class="card-header collapsible-header" onclick="toggleCollapsible('transfer-body', this)">
+                    <div class="card-header-left">
+                        <h2 class="card-title">재고 이관 시뮬레이터</h2>
+                        <span class="card-subtitle">메인 창고(HUB)에서 각 FFC로 이관 시나리오 검증</span>
+                    </div>
+                    <div class="btn-group" onclick="event.stopPropagation()">
+                        <input type="file" id="transfer-upload" accept=".xlsx" style="display: none;">
+                        <button class="btn btn--primary btn--sm" onclick="document.getElementById('transfer-upload').click()">시나리오 업로드</button>
+                    </div>
+                </div>
+                <div class="card-body collapsible-body" id="transfer-body" style="display: none;">
+                    <div class="data-table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                        <table class="data-table" id="transfer-table">
+                            <thead>
+                                <tr>
+                                    <th>품목코드</th>
+                                    <th>품목명</th>
+                                    <th>도착 창고</th>
+                                    <th class="text-right">이관 수량(캔)</th>
+                                    <th class="text-right">메인창고 잔여재고(Before)</th>
+                                    <th class="text-right">메인창고 잔여재고(After)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="6" class="empty-state">이관 시나리오 엑셀을 업로드해주세요.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
     <!-- 재고 관리(추가/수정) 모달 -->
-    
-    </div>
+
 
     <div id="toast-container" class="toast-container"></div>
     <script src="/static/js/app.js"></script>
@@ -342,6 +374,39 @@
                     InventoryPage.load();
                 } catch(err) {
                     // Error already shown by API handler
+                }
+            });
+
+            document.getElementById('transfer-upload').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                e.target.value = '';
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    const result = await API.postFormData('/api/transfer/simulation', formData);
+                    const tbody = document.querySelector('#transfer-table tbody');
+                    if (!result || result.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">처리된 데이터가 없습니다.</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = result.map(r => {
+                        const afterClass = r.hub_after < 0 ? 'color: var(--accent-red); font-weight: bold;' : '';
+                        return `
+                            <tr>
+                                <td class="mono">${r.product_code}</td>
+                                <td>${r.product_name}</td>
+                                <td>${r.to_warehouse}</td>
+                                <td class="text-right mono">${Format.number(r.transfer_qty)}</td>
+                                <td class="text-right mono">${Format.number(r.hub_before)}</td>
+                                <td class="text-right mono" style="${afterClass}">${Format.number(r.hub_after)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                    document.getElementById('transfer-body').style.display = 'block';
+                    Toast.show('시뮬레이션 완료', 'success');
+                } catch(err) {
+                    // API handler shows error
                 }
             });
         });

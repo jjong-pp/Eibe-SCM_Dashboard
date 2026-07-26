@@ -95,46 +95,45 @@ def upload_inventory_snapshot(
 
     content = file.file.read()
     try:
-        df = pd.read_excel(io.BytesIO(content))
-    except Exception:
-        raise HTTPException(status_code=400, detail="엑셀 파일을 읽을 수 없습니다")
+        from app.core.excel_parser import parse_excel_file
+        parsed_data = parse_excel_file(content, template_type="inventory_snapshot")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"엑셀 파일을 읽을 수 없습니다: {str(e)}")
 
-    required_cols = {"snapshot_date", "qty_cans"}
-    if not required_cols.issubset(set(df.columns)):
-        raise HTTPException(status_code=400, detail=f"필수 컬럼 누락: {required_cols - set(df.columns)}")
+    if not parsed_data:
+        return MessageResponse(message="업로드할 데이터가 없습니다 (0건 등록).")
 
     created = 0
     try:
-        for _, row in df.iterrows():
-            snap_date = str(row["snapshot_date"]).strip()
-            if not snap_date or pd.isna(row["snapshot_date"]):
+        for row in parsed_data:
+            snap_date = str(row.get("snapshot_date", "")).strip()
+            if not snap_date or snap_date == "None":
                 continue
 
             # 창고 매핑 시도
             wh_id = None
-            wh_name = None
-            if "warehouse_name" in df.columns and pd.notna(row.get("warehouse_name")):
-                wh_name = str(row["warehouse_name"]).strip()
+            wh_name = str(row.get("warehouse_name", "")).strip() if row.get("warehouse_name") else None
+            if wh_name and wh_name != "None":
                 wh = db.query(WarehouseDB).filter(WarehouseDB.warehouse_name == wh_name).first()
                 if wh:
                     wh_id = wh.id
 
-            updated_at = str(row.get("updated_at", "")).strip() if "updated_at" in df.columns and pd.notna(row.get("updated_at")) else None
-            # Also check Korean column name since parser might leave raw pandas columns
-            if not updated_at and "업데이트일시(YYYY-MM-DD HH:MM:SS)" in df.columns and pd.notna(row.get("업데이트일시(YYYY-MM-DD HH:MM:SS)")):
-                updated_at = str(row.get("업데이트일시(YYYY-MM-DD HH:MM:SS)")).strip()
-            
-            if not updated_at:
+            updated_at = str(row.get("updated_at", "")).strip() if row.get("updated_at") else None
+            if not updated_at or updated_at == "None":
                 updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+            qty = row.get("qty_cans")
+            if qty is None or str(qty).lower() == "none":
+                qty = 0
 
             new_snap = InventorySnapshot(
                 snapshot_date=snap_date,
                 warehouse_id=wh_id,
-                warehouse_name=wh_name or (str(row.get("warehouse_name", "")).strip() if "warehouse_name" in df.columns else None),
-                product_name=str(row.get("product_name", "")).strip() if "product_name" in df.columns and pd.notna(row.get("product_name")) else None,
-                product_code=str(row.get("product_code", "")).strip() if "product_code" in df.columns and pd.notna(row.get("product_code")) else None,
-                expiry_date=str(row.get("expiry_date", "")).strip() if "expiry_date" in df.columns and pd.notna(row.get("expiry_date")) else None,
-                qty_cans=int(row["qty_cans"]) if pd.notna(row.get("qty_cans")) else 0,
+                warehouse_name=wh_name if wh_name != "None" else None,
+                product_name=str(row.get("product_name", "")).strip() if row.get("product_name") and str(row.get("product_name")) != "None" else None,
+                product_code=str(row.get("product_code", "")).strip() if row.get("product_code") and str(row.get("product_code")) != "None" else None,
+                expiry_date=str(row.get("expiry_date", "")).strip() if row.get("expiry_date") and str(row.get("expiry_date")) != "None" else None,
+                qty_cans=int(qty),
                 updated_at=updated_at,
             )
             db.add(new_snap)
@@ -306,7 +305,7 @@ def get_expiry_summary(
             
         inbound = db.query(InboundDB).filter(InboundDB.product_code == p_code, InboundDB.expiry_date == exp_date).first()
         price = 0
-        if inbound and inbound.payment_amount_krw:
+        if inbound and inbound.payment_amount_krw is not None:
             qty = inbound.can_qty
             if not qty and inbound.carton_qty:
                 prod = db.query(ProductDB).filter(ProductDB.product_code == p_code).first()
@@ -465,6 +464,20 @@ def get_order_plan_simulation(
     outflows = db.query(OutflowHistory).all()
 
     result = []
+    
+    # N+1 쿼리 최적화: SalesHistory 와 MonthlyOrderPlan 사전 로드
+    product_ids = [p.id for p in products]
+    all_sales = db.query(SalesHistory).filter(SalesHistory.product_id.in_(product_ids)).order_by(SalesHistory.base_date.desc()).all()
+    all_plans = db.query(MonthlyOrderPlan).filter(MonthlyOrderPlan.product_id.in_(product_ids)).all()
+    
+    sales_by_product = {}
+    for s in all_sales:
+        sales_by_product.setdefault(s.product_id, []).append(s)
+        
+    plans_by_product = {}
+    for p in all_plans:
+        plans_by_product.setdefault(p.product_id, []).append(p)
+    
     for product in products:
         # 현재 총 재고 (최신 스냅샷에서 품목코드 일치 건 합산)
         total_stock = sum(
@@ -485,13 +498,7 @@ def get_order_plan_simulation(
         smoothing = calc_weekly_smoothing_constant(outflow_values) if outflow_values else 0
 
         # 판매 기반 감모 버퍼
-        sales = (
-            db.query(SalesHistory)
-            .filter(SalesHistory.product_id == product.id)
-            .order_by(SalesHistory.base_date.desc())
-            .limit(12)
-            .all()
-        )
+        sales = sales_by_product.get(product.id, [])[:12]
         sales_data = [s.sales_qty for s in reversed(sales)] if sales else []
         loss_buffer = (
             calc_dynamic_loss_buffer(outflow_values, sales_data)
@@ -501,7 +508,7 @@ def get_order_plan_simulation(
 
         # 도착월 기준 발주 계획 데이터 통합
         today = date.today()
-        plans = db.query(MonthlyOrderPlan).filter(MonthlyOrderPlan.product_id == product.id).all()
+        plans = plans_by_product.get(product.id, [])
         expected_inbounds_dict = {}
         for p in plans:
             if p.arrival_month and p.user_modified_qty > 0:
@@ -579,6 +586,8 @@ def save_order_plan(
             .first()
         )
         if existing:
+            if existing.version and item.version and existing.version != item.version:
+                raise HTTPException(status_code=409, detail=f"데이터가 이미 다른 사용자에 의해 변경되었습니다. 새로고침 후 다시 시도해주세요. (품목: {item.product_id})")
             existing.user_modified_qty = item.user_modified_qty
             if item.arrival_month is not None:
                 existing.arrival_month = item.arrival_month
@@ -754,3 +763,87 @@ def get_template_types():
         {"type": "production", "label": "생산"},
         {"type": "inbound", "label": "입고"},
     ]
+
+
+@router.post("/api/transfer/simulation", tags=["재고 관리"])
+def simulate_inventory_transfer(
+    file: UploadFile = File(...),
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """이관 시뮬레이터 엑셀 업로드 및 검증"""
+    import pandas as pd
+    
+    if not file.filename.endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="xlsx 파일만 업로드 가능합니다")
+    
+    content = file.file.read()
+    try:
+        df = pd.read_excel(io.BytesIO(content))
+    except Exception:
+        raise HTTPException(status_code=400, detail="엑셀 파일을 읽을 수 없습니다")
+    
+    # Get latest snapshot date
+    latest_date_row = db.query(func.max(InventorySnapshot.snapshot_date)).first()
+    latest_date = latest_date_row[0] if latest_date_row and latest_date_row[0] else None
+    
+    if not latest_date:
+        raise HTTPException(status_code=400, detail="현재고 데이터가 없습니다")
+        
+    hub_wh = db.query(WarehouseDB).filter(WarehouseDB.warehouse_type == "HUB").first()
+    hub_name = hub_wh.warehouse_name if hub_wh else "용인 메인창고"
+    
+    hub_inventory = db.query(InventorySnapshot).filter(
+        InventorySnapshot.snapshot_date == latest_date,
+        InventorySnapshot.warehouse_name == hub_name
+    ).all()
+    
+    hub_stock_dict = {}
+    for inv in hub_inventory:
+        hub_stock_dict[inv.product_code] = hub_stock_dict.get(inv.product_code, 0) + inv.qty_cans
+        
+    products_dict = {p.product_code: p.product_name for p in db.query(ProductDB).all()}
+    
+    results = []
+    
+    # Example template headers: ['도착 창고명', '품목코드', '이관수량(캔)']
+    # Support various column names for robustness
+    wh_cols = [c for c in df.columns if "창고" in str(c) or "warehouse" in str(c).lower()]
+    prod_cols = [c for c in df.columns if "품목코드" in str(c) or "product_code" in str(c).lower() or "코드" in str(c)]
+    qty_cols = [c for c in df.columns if "수량" in str(c) or "qty" in str(c).lower()]
+    
+    if not (wh_cols and prod_cols and qty_cols):
+        raise HTTPException(status_code=400, detail="엑셀 컬럼을 인식할 수 없습니다. '창고', '품목코드', '수량' 컬럼이 필요합니다.")
+        
+    wh_col, prod_col, qty_col = wh_cols[0], prod_cols[0], qty_cols[0]
+    
+    for _, row in df.iterrows():
+        to_wh = str(row[wh_col]).strip()
+        p_code = str(row[prod_col]).strip()
+        qty = row[qty_col]
+        
+        if not p_code or pd.isna(row[prod_col]):
+            continue
+            
+        try:
+            qty = int(qty)
+        except Exception:
+            qty = 0
+            
+        if qty <= 0:
+            continue
+            
+        before = hub_stock_dict.get(p_code, 0)
+        after = before - qty
+        hub_stock_dict[p_code] = after # Update for subsequent rows of the same product
+        
+        results.append({
+            "product_code": p_code,
+            "product_name": products_dict.get(p_code, "알 수 없음"),
+            "to_warehouse": to_wh,
+            "transfer_qty": qty,
+            "hub_before": before,
+            "hub_after": after
+        })
+        
+    return results

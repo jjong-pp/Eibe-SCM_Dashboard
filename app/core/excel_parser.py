@@ -172,6 +172,12 @@ def parse_excel_file(file_bytes: bytes, template_type: str = None) -> list:
                 "결제일(YYYY-MM-DD)": "payment_date", "입고증발행일(YYYY-MM-DD)": "invoice_date",
                 "결제환율": "exchange_rate", "결제금액(원화)": "payment_amount_krw", "품목코드": "product_code",
                 "상태(생산국출발/해상운송중/한국도착/통관중/입고일선정중/입고완료)": "status"
+            },
+            "inventory_snapshot": {
+                "스냅샷일자(YYYY-MM-DD)": "snapshot_date", "창고이름": "warehouse_name", 
+                "품목명": "product_name", "품목코드": "product_code", 
+                "기한(YYYY-MM-DD)": "expiry_date", "수량(캔)": "qty_cans",
+                "업데이트일시(YYYY-MM-DD HH:MM:SS)": "updated_at"
             }
         }
         

@@ -91,7 +91,7 @@ def seed():
                 )
                 db.add(production)
                 db.commit()
-                order.matched_production_id = production.id
+
                 db.commit()
                 
                 # Inbound (Invoice merged)
@@ -115,7 +115,7 @@ def seed():
                     exchange_rate=1400.0,
                     payment_amount_krw=int(carton_qty * prod.pack_qty_per_tu * prod.purchase_price * 1400.0),
                     arrival_wh_id=wh_main,
-                    matched_production_id=production.id,
+
                     product_code=prod.product_code,
                     status="입고완료",
                     created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")

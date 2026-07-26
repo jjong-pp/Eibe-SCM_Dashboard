@@ -15,7 +15,7 @@
                 <h1 class="page-title">입고 내역</h1>
             </div>
             
-            <div class="filter-group" style="margin-bottom: var(--space-md); display: flex; justify-content: flex-start;">
+            <div class="filter-group">
                 <select id="brand-filter" class="form-select" style="width: 200px;"></select>
             </div>
 
@@ -106,7 +106,7 @@
                     return `
                         <tr>
                             <td class="mono">${item.invoice_no || '-'}</td>
-                            <td>${brandBadge}<span class="mono">${item.product_code}</span></td>
+                            <td>${brandBadge}<span class="mono">${item.product_code || '-'}</span></td>
                             <td>${statusBadge}</td>
                             <td class="text-right mono">${Format.currency(item.unit_price || 0)}</td>
                             <td class="text-right mono" style="font-weight: 500;">${Format.currency(item.payment_amount_krw || 0)} 원</td>
