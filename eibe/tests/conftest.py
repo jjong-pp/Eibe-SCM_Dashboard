@@ -63,8 +63,14 @@ def db() -> Generator[Session, None, None]:
 
 @pytest.fixture(autouse=True)
 def _clean_tables(db: Session) -> Generator[None, None, None]:
-    """테스트 간 격리 — 매 테스트 후 모든 테이블을 비운다."""
+    """테스트 간 격리 — 매 테스트 후 모든 테이블을 비운다.
+
+    제약조건 위반을 검증하는 테스트는 세션을 실패한 트랜잭션 상태로 남긴다.
+    먼저 롤백하지 않으면 정리 자체가 실패하고, 남은 데이터가 다음 테스트를
+    엉뚱한 이유로 깨뜨린다.
+    """
     yield
+    db.rollback()
     for table in reversed(Base.metadata.sorted_tables):
         db.execute(table.delete())
     db.commit()

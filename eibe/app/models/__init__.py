@@ -8,11 +8,58 @@ Alembic autogenerate 와 create_all 이 모든 테이블을 인식하려면 여�
 
 from app.models.auth import Role, User
 from app.models.base import Base, TimestampMixin, utcnow
+from app.models.enums import (
+    BrandCategory,
+    InboundStatus,
+    MetricSource,
+    OutflowType,
+    PlanStatus,
+    WarehouseType,
+)
+from app.models.master import (
+    Brand,
+    Channel,
+    LogisticsCost,
+    Product,
+    ProductAlias,
+    Warehouse,
+    WarehouseProductMoq,
+)
+from app.models.metrics import WeeklyMetric
+from app.models.sales import Promotion, SalesOrder
+from app.models.scm import Inbound, InventorySnapshot, MonthlyOrderPlan, PurchaseOrder
 
 __all__ = [
+    # 기반
     "Base",
-    "Role",
     "TimestampMixin",
-    "User",
     "utcnow",
+    # 열거형
+    "BrandCategory",
+    "InboundStatus",
+    "MetricSource",
+    "OutflowType",
+    "PlanStatus",
+    "Role",
+    "WarehouseType",
+    # 인증
+    "User",
+    # 기준 정보
+    "Brand",
+    "Channel",
+    "LogisticsCost",
+    "Product",
+    "ProductAlias",
+    "Warehouse",
+    "WarehouseProductMoq",
+    # 공급망
+    "Inbound",
+    "InventorySnapshot",
+    "MonthlyOrderPlan",
+    "PurchaseOrder",
+    # 판매
+    "Promotion",
+    "SalesOrder",
+    # 집계
+    "WeeklyMetric",
 ]
