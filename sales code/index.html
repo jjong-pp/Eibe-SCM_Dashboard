@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아이베 세일즈 허브 · 매출 대시보드</title>
+  <link rel="icon" href="vendor/favicon.ico" sizes="any" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="vendor/auth-ring-loader.css" />
+  <link rel="stylesheet" href="vendor/workspace-module-tokens.css" />
+  <link rel="stylesheet" href="vendor/workspace-space-launcher.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="auth-gate" id="authGate" hidden>
+    <form class="auth-card" id="authForm">
+      <p class="eyebrow">세일즈 허브</p>
+      <h1>로그인</h1>
+      <label class="field"><span>이메일</span><input id="authEmail" type="email" autocomplete="username" required /></label>
+      <label class="field"><span>비밀번호</span><input id="authPassword" type="password" autocomplete="current-password" required /></label>
+      <button type="submit" class="primary-btn">로그인</button>
+      <p class="auth-error" id="authError" role="alert"></p>
+    </form>
+  </div>
+  <div class="shell" id="shell">
+    <aside class="sidebar" aria-label="메뉴">
+      <div class="sidebar-brand">
+        <span class="sidebar-logo" aria-hidden="true">
+          <img src="vendor/favicon.ico" alt="" width="38" height="38" />
+        </span>
+        <div>
+          <strong>세일즈 허브</strong>
+          <em>Sales Hub</em>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="sidebar-collapse-btn"
+        id="sidebarCollapseBtn"
+        aria-controls="shell"
+        aria-expanded="true"
+        title="메뉴 접기"
+      >‹</button>
+
+      <nav class="sidebar-nav">
+        <p class="nav-label">모니터</p>
+        <a class="nav-item is-active" href="#sec-overview" data-nav="overview">매출 요약</a>
+        <a class="nav-item" href="#sec-why" data-nav="why">변동 · 행사</a>
+        <a class="nav-item" href="#sec-mix" data-nav="mix">채널 믹스</a>
+        <a class="nav-item" href="#sec-portfolio" data-nav="portfolio">포트폴리오</a>
+        <a class="nav-item" href="#sec-events" data-nav="events">행사 ROI</a>
+        <button type="button" class="nav-item nav-btn" id="openCalendarBtn">행사 캘린더</button>
+
+        <p class="nav-label">브랜드</p>
+        <button type="button" class="nav-item nav-btn brand-all" id="brandAllBtn" title="차후 오픈">
+          전체 브랜드
+          <span class="nav-badge">준비 중</span>
+        </button>
+        <div class="brand-nav" id="brandNav"></div>
+
+        <p class="nav-label">시스템</p>
+        <button type="button" class="nav-item nav-btn nav-admin" id="adminBtn" title="시트 편집 · 엑셀 반영">어드민</button>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="brand-row">
+            <span class="brand" id="activeBrandLabel">DREAME / 드리미</span>
+            <span class="env-chip">OPS</span>
+          </div>
+          <h1 id="pageTitle">매출 현황</h1>
+          <p class="topbar-sub" id="metaDate">기준주 로딩 중</p>
+        </div>
+        <div class="topbar-meta">
+          <span class="pill" id="viewModePill">단일 브랜드</span>
+        </div>
+      </header>
+
+      <div class="main-scroll">
+        <section class="alerts" id="alerts" aria-label="주요 변동 알림"></section>
+
+        <section class="panel reveal" id="sec-overview">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Overview</p>
+              <h2>매출 현황 요약</h2>
+              <p class="note">주간 · 월간 · 모멘텀을 한눈에 보고, 아래에서 추이를 주별/월별·전체로 살펴보세요.</p>
+            </div>
+            <div class="panel-actions">
+              <label class="field">
+                <span>기준 시점</span>
+                <select id="anchorSelect">
+                  <option value="">최신 데이터 (기본)</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>카테고리</span>
+                <select id="categoryFilter"><option value="">전체</option></select>
+              </label>
+            </div>
+          </div>
+
+          <div class="kpi-grid" id="kpiGrid"></div>
+
+          <div class="trend-block">
+            <div class="trend-head">
+              <div>
+                <p class="eyebrow">Trend</p>
+                <h3 class="trend-title">매출 추이</h3>
+              </div>
+              <div class="chart-controls">
+                <label class="field"><span>단위</span>
+                  <select id="trendUnit">
+                    <option value="week">주별</option>
+                    <option value="month">월별</option>
+                  </select>
+                </label>
+                <label class="field"><span>기준</span>
+                  <select id="trendBasis">
+                    <option value="simplifiedChannel">채널 (주요 + 기타)</option>
+                    <option value="channel">채널별 (상세)</option>
+                    <option value="channelType">채널구분별 (온라인/오프라인/공구)</option>
+                    <option value="lineup">라인업별 (커스텀 묶음)</option>
+                    <option value="product">제품별 (상세)</option>
+                    <option value="category">카테고리별</option>
+                  </select>
+                </label>
+                <label class="field"><span>값</span>
+                  <select id="trendValue">
+                    <option value="sales">매출액</option>
+                    <option value="qty">수량</option>
+                  </select>
+                </label>
+                <label class="field"><span>범위</span>
+                  <select id="trendRange">
+                    <option value="12">최근 12개</option>
+                    <option value="8">최근 8개</option>
+                    <option value="6">최근 6개</option>
+                    <option value="4">최근 4개</option>
+                    <option value="all">전체</option>
+                  </select>
+                </label>
+                <div class="field field-series">
+                  <span>표시 항목</span>
+                  <div class="series-dd" id="trendSeriesDd">
+                    <button type="button" class="series-dd-toggle" id="trendSeriesToggle" aria-expanded="false" aria-haspopup="listbox">
+                      선택…
+                    </button>
+                    <div class="series-dd-panel" id="trendSeriesPanel" hidden>
+                      <div class="series-dd-actions">
+                        <button type="button" id="trendSeriesAll">전체</button>
+                        <button type="button" id="trendSeriesNone">해제</button>
+                        <button type="button" id="trendSeriesTop">상위 12</button>
+                      </div>
+                      <div class="series-dd-list" id="trendSeriesList" role="listbox" aria-multiselectable="true"></div>
+                      <p class="series-dd-hint" id="trendSeriesHint"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="chart-wrap chart-wrap-trend">
+              <canvas id="trendChart" height="130"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel reveal" id="sec-why">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Signal</p>
+              <h2>변동 · 행사 대조</h2>
+              <p class="note">금주 겹치는 프로모션과 주간 판매를 대조합니다. 행을 누르면 세부 분석이 열립니다.</p>
+            </div>
+            <p class="hint" id="whyMeta"></p>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table why-table">
+              <thead>
+                <tr>
+                  <th>금주 겹침 행사</th>
+                  <th>제품</th>
+                  <th>기간</th>
+                  <th class="num">행사 실판매</th>
+                  <th class="num">주간 WoW</th>
+                  <th>판독</th>
+                </tr>
+              </thead>
+              <tbody id="whyBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel reveal" id="sec-mix">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Mix</p>
+              <h2>채널 믹스 <span class="muted" id="mixWeekLabel"></span></h2>
+              <p class="hint">채널 행을 누르면 세부 채널·행사 연계를 봅니다.</p>
+            </div>
+          </div>
+          <div class="mix-grid">
+            <div class="donut-wrap" id="mixDonutWrap">
+              <canvas id="mixChart" aria-label="채널 믹스 도넛 차트"></canvas>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>채널</th>
+                    <th class="num">매출</th>
+                    <th class="num">비중</th>
+                    <th class="num">전주 대비</th>
+                    <th class="num">전월 대비</th>
+                  </tr>
+                </thead>
+                <tbody id="mixBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel reveal" id="sec-portfolio">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Portfolio</p>
+              <h2>제품 포트폴리오</h2>
+              <p class="note">이번 달 동기간 vs 지난달 동기간 · 제품 클릭 시 채널별 기여</p>
+            </div>
+            <div class="panel-actions compact">
+              <label class="field"><span>기준</span><select id="portfolioDim"><option value="lineup">라인업</option><option value="category">카테고리</option></select></label>
+              <label class="field"><span>기간</span><select id="portfolioPeriod"><option value="mom">전월 대비</option><option value="wow">전주 대비</option></select></label>
+              <label class="field"><span>최소 수량</span><input type="number" id="portfolioMinQty" value="5" min="0" /></label>
+            </div>
+          </div>
+          <div class="top3-grid">
+            <div>
+              <h3 class="subhead up">성장 TOP3</h3>
+              <ul class="rank-list" id="growthList"></ul>
+            </div>
+            <div>
+              <h3 class="subhead down">하락 TOP3</h3>
+              <ul class="rank-list" id="declineList"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel reveal" id="sec-events">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">ROI</p>
+              <h2>행사 효과 · Lift</h2>
+              <p class="note">Lift = (행사 일평균 ÷ 직전 14일 일평균) − 1</p>
+            </div>
+            <div class="panel-actions">
+              <label class="field"><span>기간</span><select><option>이번 달</option><option>지난 달</option><option>최근 3개월</option></select></label>
+              <label class="field"><span>채널</span><select><option>전체 채널</option><option>네이버</option><option>쿠팡</option><option>하이마트</option></select></label>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table event-table">
+              <thead>
+                <tr>
+                  <th>채널</th>
+                  <th>행사 구좌 / 행사명</th>
+                  <th>제품명</th>
+                  <th>행사 기간</th>
+                  <th class="num">행사 판매수량 (매출)</th>
+                  <th class="num">평시 일평균</th>
+                  <th class="num">행사 일평균</th>
+                  <th class="num">Lift %</th>
+                </tr>
+              </thead>
+              <tbody id="eventBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="detailModal" hidden>
+    <div class="modal modal-detail" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="modal-head">
+        <h3 id="detailTitle">세부 분석</h3>
+        <button type="button" class="modal-close" id="detailClose" aria-label="닫기">×</button>
+      </div>
+      <div class="detail-layout">
+        <aside class="insight-panel" id="insightPanel">
+          <p class="insight-verdict" id="insightVerdict"></p>
+          <dl class="insight-summary" id="insightSummary"></dl>
+          <h4 class="insight-h">원인 · 가설 · 기여</h4>
+          <ul class="insight-reasons" id="insightReasons"></ul>
+          <h4 class="insight-h">연계 행사</h4>
+          <ul class="insight-events" id="insightEvents"></ul>
+        </aside>
+        <div class="detail-table-wrap">
+          <h4 class="insight-h" id="detailTableCaption">기여 분해</h4>
+          <div class="table-scroll">
+            <table class="data-table detail-table">
+              <thead>
+                <tr>
+                  <th id="detailCol1">세부 채널명</th>
+                  <th class="num">금주 수량</th>
+                  <th class="num">전주 대비 (WoW)</th>
+                  <th class="num">금주 매출</th>
+                </tr>
+              </thead>
+              <tbody id="detailBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="brandModal" hidden>
+    <div class="modal modal-brand" role="dialog" aria-modal="true" aria-labelledby="brandTitle">
+      <div class="modal-head">
+        <div>
+          <h3 id="brandTitle">브랜드 선택</h3>
+          <p class="note">드리미를 선택한 뒤 시트에 데이터를 넣습니다. 브랜드 추가는 없습니다.</p>
+        </div>
+        <button type="button" class="modal-close" id="brandClose" aria-label="닫기">×</button>
+      </div>
+      <div class="brand-list" id="brandList"></div>
+    </div>
+  </div>
+
+  <div class="admin-view" id="adminView" hidden>
+    <header class="admin-bar">
+      <div class="admin-bar-lead">
+        <button type="button" class="btn" id="adminBackBtn">← 대시보드</button>
+        <div class="admin-bar-title">
+          <span class="admin-brand" id="adminBrandLabel">드리미</span>
+          <span class="muted admin-bar-sub">시트 편집 · 저장은 「입력 반영」</span>
+        </div>
+      </div>
+      <div class="admin-bar-actions">
+        <span class="save-hint" id="saveHint">기입·붙여넣기 후 「입력 반영」</span>
+        <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" hidden />
+        <div class="admin-action-group" role="group" aria-label="엑셀">
+          <button type="button" class="btn" id="excelTemplateBtn" title="헤더만 담긴 빈 양식 다운로드">양식</button>
+          <button type="button" class="btn btn-primary-excel" id="excelUploadBtn" title="엑셀로 추가 또는 전체 교체">엑셀 업로드</button>
+          <button type="button" class="btn" id="excelDownloadBtn" title="현재 시트 데이터 다운로드">다운로드</button>
+        </div>
+        <div class="admin-action-group admin-action-group-primary" role="group" aria-label="저장">
+          <button type="button" class="btn btn-apply" id="applySheetBtn" title="화면 내용을 서버에 저장">입력 반영</button>
+        </div>
+        <div class="admin-action-group" role="group" aria-label="행">
+          <button type="button" class="btn" id="addRowBtn" title="맨 아래 빈 입력 칸으로 이동">행 추가</button>
+          <button type="button" class="btn btn-danger" id="clearSheetBtn">시트 비우기</button>
+        </div>
+      </div>
+    </header>
+    <nav class="sheet-tabs" id="sheetTabs" aria-label="시트 선택"></nav>
+    <div class="sheet-range-bar">
+      <p class="sheet-range-hint" id="sheetRangeHint" aria-live="polite"></p>
+      <p class="sheet-range-legend" aria-hidden="true">
+        <span class="legend-dot legend-data"></span>데이터
+        <span class="legend-dot legend-trail"></span>입력용 빈 행
+      </p>
+    </div>
+    <details class="audit-panel" id="auditPanel">
+      <summary class="audit-panel__summary">
+        <span class="audit-panel__title">최근 변경 로그</span>
+        <span class="audit-panel__cap">최대 10건 · 펼쳐서 보기</span>
+      </summary>
+      <ol id="auditList" class="audit-panel__list"><li>불러오는 중…</li></ol>
+    </details>
+    <div class="sheet-wrap">
+      <table class="sheet-table" id="sheetTable">
+        <thead id="sheetHead"></thead>
+        <tbody id="sheetBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  
+  <div class="modal-backdrop saving-backdrop" id="savingModal" hidden>
+    <div class="modal modal-saving" role="dialog" aria-modal="true" aria-labelledby="savingTitle">
+      <div class="auth-ring-loader hub-busy-ring" aria-hidden="true">
+        <svg class="pl" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <circle class="pl__ring1" cx="64" cy="64" r="60" fill="none" stroke="currentColor" stroke-width="8" transform="rotate(-90,64,64)" stroke-linecap="round" stroke-dasharray="377 377" stroke-dashoffset="-376.4"></circle>
+          <circle class="pl__ring2" cx="64" cy="64" r="52.5" fill="none" stroke="currentColor" stroke-width="7" transform="rotate(-90,64,64)" stroke-linecap="round" stroke-dasharray="329.9 329.9" stroke-dashoffset="-329.3"></circle>
+          <circle class="pl__ring3" cx="64" cy="64" r="46" fill="none" stroke="currentColor" stroke-width="6" transform="rotate(-90,64,64)" stroke-linecap="round" stroke-dasharray="289 289" stroke-dashoffset="-288.6"></circle>
+          <circle class="pl__ring4" cx="64" cy="64" r="40.5" fill="none" stroke="currentColor" stroke-width="5" transform="rotate(-90,64,64)" stroke-linecap="round" stroke-dasharray="254.5 254.5" stroke-dashoffset="-254"></circle>
+          <circle class="pl__ring5" cx="64" cy="64" r="36" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(-90,64,64)" stroke-linecap="round" stroke-dasharray="226.2 226.2" stroke-dashoffset="-225.8"></circle>
+          <circle class="pl__ring6" cx="64" cy="64" r="32.5" fill="none" stroke="currentColor" stroke-width="3" transform="rotate(-90,64,64)" stroke-linecap="round" stroke-dasharray="204.2 204.2" stroke-dashoffset="-203.9"></circle>
+        </svg>
+      </div>
+      <h3 id="savingTitle">불러오는 중…</h3>
+      <p class="note" id="savingHint">잠시만 기다려 주세요.</p>
+    </div>
+  </div>
+
+  
+  <div class="modal-backdrop" id="excelModeModal" hidden>
+    <div class="modal modal-excel-mode" role="dialog" aria-modal="true" aria-labelledby="excelModeTitle">
+      <div class="modal-head">
+        <div>
+          <h3 id="excelModeTitle">엑셀을 어떻게 넣을까요?</h3>
+          <p class="note" id="excelModeSheetHint">선택한 현재 시트에만 적용됩니다.</p>
+        </div>
+        <button type="button" class="modal-close" id="excelModeClose" aria-label="닫기">×</button>
+      </div>
+      <div class="excel-mode-actions">
+        <button type="button" class="btn excel-mode-btn" id="excelModeAppend" data-mode="append">
+          <strong>기존 행에 추가</strong>
+          <span>맨 아래에 이어 붙입니다. 기존 데이터는 그대로 둡니다.</span>
+        </button>
+        <button type="button" class="btn excel-mode-btn excel-mode-replace" id="excelModeReplace" data-mode="replace">
+          <strong>전체 교체</strong>
+          <span>시트 내용을 모두 지우고 파일로 덮어씁니다. 되돌릴 수 없습니다.</span>
+        </button>
+      </div>
+      <p class="note excel-mode-warn">파일 선택 후 확인 창이 한 번 더 뜹니다.</p>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="calendarModal" hidden>
+    <div class="modal modal-calendar" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
+      <div class="modal-head">
+        <div>
+          <h3 id="calendarTitle">행사 캘린더 · 2026년 7월</h3>
+          <p class="note">날짜를 클릭하면 해당일 행사가 표시됩니다.</p>
+        </div>
+        <button type="button" class="modal-close" id="calendarClose" aria-label="닫기">×</button>
+      </div>
+      <div class="cal-legend" id="calLegend"></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-detail" id="calDetail"></div>
+    </div>
+  </div>
+
+  <div class="space-launcher-stack" aria-label="앱 전환">
+    <a href="#" class="space-launcher" aria-label="Switch to EIBE Workspace">
+      <span class="space-launcher__body">
+        <span class="space-launcher__eyebrow">Switch to</span>
+        <span class="space-launcher__title">EIBE <b>WORKSPACE</b></span>
+      </span>
+      <span class="space-launcher__arrow" aria-hidden="true">→</span>
+    </a>
+    <a href="#" class="space-launcher" aria-label="Switch to EIBE Members">
+      <span class="space-launcher__body">
+        <span class="space-launcher__eyebrow">Switch to</span>
+        <span class="space-launcher__title">EIBE <b>MEMBERS</b></span>
+      </span>
+      <span class="space-launcher__arrow" aria-hidden="true">→</span>
+    </a>
+  </div>
+
+  <script src="domain/sheetSchema.js"></script>
+  <script src="domain/sampleData.js"></script>
+  <script src="domain/dataSources.js"></script>
+  <script src="env.js"></script>
+  <script src="data/config.js"></script>
+  <script src="data/localStore.js"></script>
+  <script src="data/apiStore.js"></script>
+  <script src="data/authGate.js"></script>
+  <script src="data/repository.js"></script>
+  <script src="domain/analytics.js"></script>
+  <script src="admin.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
