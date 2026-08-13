@@ -19,11 +19,11 @@ import sys
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.dates import iso_week_of
+from app.core.dates import IsoWeek, iso_week_of
 from app.core.security import hash_password
 from app.database import SessionLocal
 from app.models.auth import Role, User
@@ -32,6 +32,11 @@ from app.models.master import Brand, Channel, Product, ProductAlias, Warehouse
 from app.models.metrics import WeeklyMetric
 from app.models.sales import SalesOrder
 from app.models.scm import Inbound, InventorySnapshot
+from app.services.derive import (
+    apply_inventory_flow,
+    rebuild_weekly_metrics,
+    resolve_sales_mappings,
+)
 
 # 개발 환경 전용 비밀번호. 운영에서는 이 스크립트 자체가 실행되지 않는다.
 DEV_PASSWORD = "dev-password-1234"
@@ -233,28 +238,30 @@ def seed_activity(db: Session, brand: Brand, weeks: int = 26) -> None:
                     )
         db.commit()
 
-    # ── 재고 스냅샷 (최신 시점) ──────────────────────────────────────
-    warehouses = list(db.scalars(select(Warehouse)))
-    for product in products:
-        for warehouse in warehouses:
-            existing = db.scalar(
-                select(InventorySnapshot).where(
-                    InventorySnapshot.snapshot_date == monday,
-                    InventorySnapshot.warehouse_id == warehouse.id,
-                    InventorySnapshot.product_id == product.id,
-                    InventorySnapshot.expiry_date.is_(None),
-                )
-            )
-            if existing is None:
-                db.add(
-                    InventorySnapshot(
-                        snapshot_date=monday,
-                        warehouse_id=warehouse.id,
-                        product_id=product.id,
-                        qty=rng.randint(200, 2500),
+    # ── 재고 스냅샷 (주 1회, 월요일) ─────────────────────────────────
+    # 한 시점만 만들면 주차별 재고 변화를 알 수 없어 출고량이 계산되지 않고,
+    # 예측 엔진의 평탄화 상수가 0이 된다. 실제 운영과 같이 매주 뜬다.
+    if db.scalar(select(InventorySnapshot).limit(1)) is None:
+        warehouses = list(db.scalars(select(Warehouse)))
+        for product in products:
+            for warehouse in warehouses:
+                stock = rng.randint(3000, 9000)
+                for week_offset in range(weeks, -1, -1):
+                    snapshot_date = monday - timedelta(weeks=week_offset)
+                    db.add(
+                        InventorySnapshot(
+                            snapshot_date=snapshot_date,
+                            warehouse_id=warehouse.id,
+                            product_id=product.id,
+                            qty=stock,
+                        )
                     )
-                )
-    db.commit()
+                    # 매주 소진되다가 재고가 낮아지면 보충된다.
+                    stock -= rng.randint(80, 260)
+                    if stock < 800:
+                        stock += rng.randint(2000, 4000)
+                    stock = max(stock, 0)
+        db.commit()
 
     # ── 입고 파이프라인 ──────────────────────────────────────────────
     if db.scalar(select(Inbound).limit(1)) is None:
@@ -289,47 +296,20 @@ def seed_activity(db: Session, brand: Brand, weeks: int = 26) -> None:
         db.commit()
 
 
-def rebuild_weekly_metrics(db: Session) -> int:
-    """판매 원장에서 주차 집계를 만든다.
+def build_metrics(db: Session) -> int:
+    """주차 집계를 만든다.
 
-    Phase 3 의 services/derive.py 가 이 역할을 정식으로 가져간다. 여기서는
-    화면 개발에 필요한 최소한만 채운다.
+    집계 규칙은 services/derive.py 가 갖는다. 시드가 따로 구현하면 두 벌이
+    되고 언젠가 어긋난다 — 화면에서 보는 값과 서버가 계산하는 값이 달라진다.
     """
-    db.query(WeeklyMetric).filter(WeeklyMetric.source == MetricSource.DERIVED).delete()
-    db.commit()
+    resolve_sales_mappings(db)
+    result = rebuild_weekly_metrics(db)
 
-    rows = db.execute(
-        select(
-            SalesOrder.iso_year,
-            SalesOrder.iso_week,
-            SalesOrder.product_id,
-            Channel.warehouse_id,
-            func.sum(SalesOrder.qty),
-            func.sum(SalesOrder.amount),
-        )
-        .join(Channel, SalesOrder.channel_id == Channel.id)
-        .where(SalesOrder.product_id.is_not(None), Channel.warehouse_id.is_not(None))
-        .group_by(
-            SalesOrder.iso_year, SalesOrder.iso_week, SalesOrder.product_id, Channel.warehouse_id
-        )
-    ).all()
+    # 재고 흐름(기초·기말·출고)은 스냅샷이 있는 주차에만 채워진다.
+    for week in {IsoWeek(m.iso_year, m.iso_week) for m in db.query(WeeklyMetric)}:
+        apply_inventory_flow(db, week)
 
-    for iso_year, iso_week, product_id, warehouse_id, qty, amount in rows:
-        db.add(
-            WeeklyMetric(
-                iso_year=iso_year,
-                iso_week=iso_week,
-                product_id=product_id,
-                warehouse_id=warehouse_id,
-                sales_qty=int(qty or 0),
-                # 감모를 반영해 출고량은 판매량보다 조금 크게 둔다.
-                outflow_qty=int((qty or 0) * 1.05),
-                sales_amount=amount or Decimal("0"),
-                source=MetricSource.DERIVED,
-            )
-        )
-    db.commit()
-    return len(rows)
+    return result.rows_written
 
 
 def reset(db: Session) -> None:
@@ -371,7 +351,7 @@ def main() -> int:
         snapshots = db.query(InventorySnapshot).count()
         print(f"실적: 판매 {orders} · 입고 {inbounds} · 재고 {snapshots}")
 
-        metrics = rebuild_weekly_metrics(db)
+        metrics = build_metrics(db)
         print(f"주차 집계 {metrics}건 생성")
 
     _print_credentials()
