@@ -1,0 +1,311 @@
+# 개발 상태 — 인수인계 문서
+
+> **갱신 시점** 2026-08-13 · **브랜치** `feat/unified-platform`
+>
+> 다른 PC 에서 작업을 이어받을 때 이 문서만 읽으면 방향·속도·판단 기준이
+> 그대로 유지되도록 쓴 것이다. **작업을 진행할 때마다 갱신한다.**
+
+---
+
+## 1. 지금 어디까지 왔나
+
+```
+2ed69af  feat(eibe): Phase 3 (part 1) — forecasting and derived aggregates
+297d44a  feat(eibe): Phase 2 — unified domain model
+2e4a82e  feat(eibe): Phase 1 — application skeleton
+2c05615  chore: preserve Sales Hub draft before unified rebuild
+57c80d9  (master 시작점 — 구 SCM 코드)
+```
+
+| 항목 | 수치 |
+|---|---|
+| Python 코드 | 약 5,300줄 |
+| 테스트 | 143개 (전부 통과) |
+| 마이그레이션 | 2건 |
+| 도메인 테이블 | 15개 |
+
+**미해결로 남겨둔 것:** `.agents/AGENTS.md` 가 작업 중 삭제된 상태로 남아 있다
+(`git status` 에 ` D` 로 표시됨). 내용은 커밋 `57c80d9` 에 있고, 살릴 가치가 있는
+부분은 이 문서 §6 에 옮겨두었다. 삭제를 확정하려면 커밋하고, 되살리려면
+`git checkout 57c80d9 -- .agents/AGENTS.md`.
+
+---
+
+## 2. 무엇을 만들고 있나
+
+사내 두 앱을 **하나의 프로젝트로 전면 재구축**한다.
+
+| 원본 | 정체 |
+|---|---|
+| `app/` + `web/` | 구 SCM Dashboard — FastAPI + SQLite, 재고·발주 예측 |
+| `sales code/` | 구 Sales Hub — 순수 JS 매출 대시보드 8,092줄 |
+
+> **주의:** `sales code/` 는 사용자가 "세일즈 포스"라 부르지만 **Salesforce CRM 이
+> 아니다.** 자체 제작한 사내 매출 대시보드다. 원래 Firestore 를 쓰다 REST 로
+> 옮긴 흔적이 남아 있다 (`FirestoreStore` 별칭, `WRITE_BATCH_SIZE` 설정).
+
+**진행 방식 (사용자 지정):**
+1. 루트에 `eibe/` 폴더를 만들어 통합 코드를 **새로 작성** ← 현재 여기
+2. 기존 `app/` · `web/` · `sales code/` 폐기
+3. `eibe/` 내용을 루트로 꺼내 배포용 저장소 구조로 정리
+
+---
+
+## 3. 로드맵
+
+| Phase | 내용 | 상태 |
+|---|---|---|
+| 0 | 안전망 — `sales code/` 커밋 | ✅ |
+| 1 | 골격 — config · DB · Alembic · 인증 | ✅ |
+| 2 | 통합 도메인 모델 (15개 테이블) | ✅ |
+| 3a | `forecasting` · `derive` 서비스 | ✅ |
+| **3b** | **`analytics` 포팅 · `excel` 서비스** | **← 다음** |
+| 4 | API 라우터 (SCM + Sales Hub 계약) | ⬜ |
+| 5 | 프론트엔드 통합 | ⬜ |
+| 6 | 시딩 · 테스트 마무리 | ⬜ |
+| 7 | 루트 승격 · 구 코드 폐기 · 문서 개정 | ⬜ |
+
+### Phase 3b 상세 (바로 다음 작업)
+
+- **`services/analytics.py`** — 구 `sales code/domain/analytics.js` 1,074줄 포팅.
+  순수 함수 파이프라인이라 이식이 깔끔하다. ISO 주차 수동 구현부(약 60줄)는
+  `app/core/dates.py` 로 이미 대체됨.
+  - 담을 것: KPI(주/월, 전주·전월 대비), 채널 믹스, 포트폴리오, 행사 ROI, 알림
+  - 임계값은 구 `SheetSchema.ANALYTICS_THRESHOLDS` 참고
+    (`ALERT_PRODUCT_UP=50`, `ALERT_PRODUCT_DOWN=-25`, `ALERT_CHANNEL_DOWN=-20`, `ALERT_MAX=5`)
+- **`services/excel.py`** — 업로드 파싱 · 검증 · 매핑 · 청크 저장 · 템플릿 생성.
+  프론트 SheetJS 를 제거했으므로 서버가 전담한다.
+  - 업로드 후 `derive.rebuild_for_orders()` 를 호출해 해당 주차만 재집계
+
+### Phase 4 에서 구현해야 할 API 계약
+
+구 `sales code/data/apiStore.js` 가 **이미 이 엔드포인트들을 호출하도록 작성되어
+있다.** 프론트를 새로 쓰더라도 계약을 알고 있어야 한다.
+
+```
+GET/POST  /brands
+GET/PUT   /brands/{id}/sheets/{sheetId}
+PATCH     /brands/{id}/sheets/{sheetId}/rows
+GET       /brands/{id}/bundle
+GET/POST  /audit
+POST      /auth/login    GET /auth/me
+```
+
+---
+
+## 4. 확정된 결정 — 다시 논의하지 않는다
+
+각 항목은 사용자와 합의된 것이다. 뒤집으려면 사용자 확인이 필요하다.
+
+| # | 결정 | 근거 |
+|---|---|---|
+| D1 | **동기화 대신 파생** | 같은 DB 로 합치면 동기화 대상이 없다. 판매 원장 하나에서 SCM 집계를 파생시킨다 |
+| D2 | **SQLite → Firebase Data Connect** (관리형 PostgreSQL) | 전환 실체는 SQLite→Postgres 이고 SQLAlchemy 가 흡수한다 |
+| D3 | **FastAPI 를 앞에 유지** | 브라우저가 Firebase 에 직접 붙지 않는다. Python 서비스 계층을 지키고 Security Rules 로 SCM 권한을 표현하는 지옥을 피한다 |
+| D4 | **스케줄러 제거** | 인프로세스 스케줄러는 인스턴스가 늘면 중복 실행되고 서버리스에서 안 돈다 |
+| D5 | **백업 기능 통합 범위에서 제외** | Cloud SQL 자동 백업/PITR 로 대체 |
+| D6 | **정규화 테이블** | 시트 배열 그대로 저장하지 않는다 |
+| D7 | **프레임워크·번들러 없음** | 네이티브 ES Module 로 "빌드 없이 즉시 구동" 유지 |
+| D8 | **ML 금지** | 사칙연산 기반 통계 평탄화만. 예측 근거가 항상 드러나야 한다 |
+| D9 | **httpOnly 쿠키 + CSRF 이중제출** | localStorage 토큰의 XSS 노출 제거 |
+| D10 | **폴더명 `eibe/`** | `platform/` 은 Python stdlib 모듈명이라 네임스페이스 패키지로 stdlib 을 가릴 수 있다 |
+
+### Firestore 를 전제로 했다가 **철회한** 것
+
+한때 Firestore(NoSQL) 전환을 가정했으나 Data Connect(=PostgreSQL) 로 확정되며
+아래 제약은 불필요해졌다. **다시 도입하지 말 것.**
+
+- ~~Port-Adapter 추상화 계층~~ → SQLAlchemy 가 이미 방언을 추상화
+- ~~금액을 정수 최소단위로~~ → `Numeric` 유지 (단, §5 정밀도 한계는 지킴)
+- ~~ULID 문자열 PK~~ → `int` autoincrement 로 충분
+- ~~읽기용 역정규화 필드 강제~~ → JOIN 이 되므로 성능 목적일 때만
+
+---
+
+## 5. 반드시 지킬 규약
+
+### 5.1 PostgreSQL 이식성
+
+전환 비용을 0으로 유지하는 규칙. **하나만 어겨도 나중에 전수 수정**이다.
+
+1. **테이블명은 소문자 snake_case** — Postgres 는 따옴표 없는 식별자를 소문자로
+   접는다. 대문자는 영구히 따옴표를 달아야 한다
+2. **타입을 정확히** — SQLite 는 동적 타입이라 통과하지만 Postgres 는 거부한다
+3. **원시 SQL 금지, SQLAlchemy 표현식만** — 날짜 함수·문자열 연결이 방언마다 다르다
+4. **정렬 없는 페이지네이션 금지** — SQLite 는 우연히 일관되지만 Postgres 는 아니다
+5. **연결 설정은 `config.py` 분기** — 전환 시 `.env` 한 줄만 바뀌게
+6. **모든 스키마 변경은 Alembic** — `create_all()` 은 테스트에서만
+
+### 5.2 금액 정밀도
+
+`app/models/types.py` 의 `Money` / `UnitPrice` / `Rate` / `Percent` **만** 쓴다.
+`Numeric(...)` 을 직접 쓰지 않는다.
+
+SQLite 에는 네이티브 DECIMAL 이 없어 float64 를 경유하고, 유효자릿수가 15를 넘으면
+조용히 반올림된다. 실측: `Numeric(18,2)` 에 `999999999999999.99` → `1000000000000000.00`.
+
+### 5.3 인코딩 (한국어 Windows)
+
+- **`alembic.ini` · `*.bat` 는 ASCII 전용** — 로케일 인코딩(cp949)으로 읽히므로
+  한글이 들어가면 명령 자체가 죽는다
+- 한글 설명은 `.py` 에 둔다 (UTF-8 로 읽도록 지정된 파일)
+- stdout/stderr UTF-8 고정은 `app/__init__.py` 에서 처리됨 — 건드리지 말 것
+
+### 5.4 보안
+
+- **인증이 기본값** — 공개 엔드포인트는 별도 라우터(`public_router`)에 둔다.
+  FastAPI 는 라우터·라우트 의존성을 **합치므로** `dependencies=[]` 로 해제되지 않는다
+- 시크릿을 코드에 두지 않는다. `settings` 경유만
+- 개발용 시드 스크립트는 production 에서 실행을 거부해야 한다
+
+### 5.5 작업 방식
+
+- **주장하기 전에 측정한다.** "타입을 바꿨다"고 쓰기 전에 실제로 넣어보고 확인한다.
+  P-02(금액 정밀도)와 P-14(파이프라인 결손)는 둘 다 이렇게 발견됐다
+- **기능이 끝나면 실데이터로 전 구간을 한 번 돌린다.** 단위 테스트는 내가 상상한
+  입력만 검증한다
+- **새로 겪은 문제는 `docs/patterns.md` 에 추가한다.** 겪지 않은 일반론은 넣지 않는다
+- Phase 단위로 커밋한다. 커밋 메시지에 *무엇을* 뿐 아니라 *왜* 를 남긴다
+
+---
+
+## 6. 구 AGENTS.md 에서 살릴 업무 규칙
+
+원본은 커밋 `57c80d9` 의 `.agents/AGENTS.md` (227줄). 아키텍처 설명은 이번
+개편으로 무효가 됐고, 아래만 유효하다. **Phase 7 에서 루트 `CLAUDE.md` 로 옮긴다.**
+
+### 6.1 재고일수 히트맵 (3개월 = 13주 적정)
+
+| 구간 | 색 | 클래스 | 의미 |
+|---|---|---|---|
+| < 6주 | 빨강 | `risk-high` | 위험 — 품절 임박 |
+| 6~9주 | 노랑 | `risk-mid` | 주의 — 발주 검토 |
+| 9~13주 | 초록 | `risk-low` | 양호 — 적정 |
+| > 13주 | 파랑 | `risk-safe` | 과잉 — 이관/할인 검토 |
+
+→ 이미 `app/services/forecasting.py` 의 `StockRisk` / `RISK_THRESHOLDS_WEEKS` 로 구현됨.
+
+### 6.2 업무 규칙
+
+- **발주:** 리드타임을 고려해 **6개월 뒤 도착분**을 주문한다. UI 에 명시할 것
+- **이관:** 용인 메인창고(HUB) → 각 풀필먼트 창고. 한 창고에 여러 SKU 이동 가능
+- **유통기한:** FEFO(선입선출)
+- **자산 평가:** 마스터 예상 단가가 아니라 **인보이스 실제 결제 원화 금액**을 역추적
+- **브랜드:** `ELECTRONICS` 는 화면에서 '유통기한' → **'보증기한'** 으로 치환
+- **창고 종류:** hub(용인 메인) · online · offline · buyout
+
+### 6.3 표기 규칙
+
+- **주차:** 영문 월약어 3글자 — `Jun-W3`. **한글 주차 표기 금지**
+- **날짜:** `2026년 6월 19일 (목)`
+- **테이블 정렬:** 텍스트 좌측 · 숫자 우측(`text-right`) · 상태 중앙
+- **결측값:** 화면이 깨지지 않도록 `-` 또는 `소진 불가` 등 대체 텍스트
+
+### 6.4 UI 원칙
+
+- 모던 B2B — 장식적 애니메이션 지양
+- **이모지 금지, SVG 아이콘만**
+- **플랫 디자인** — 그라데이션·그림자 금지
+- 색상: 긍정 `#29AD3A` · 주의 `#e08a00` · 위험 `#e53535`
+- **클라이언트 계산은 실시간(Reactive)** — "시뮬레이션 실행" 버튼을 두지 않는다
+- 다크모드 유지 (CSS 변수 기반)
+
+### 6.5 과거 사고 이력 중 아직 유효한 것
+
+- **API 무응답 시** 코드부터 파헤치지 말고 **좀비 uvicorn 프로세스**를 먼저 의심한다
+- 테이블에 긴 문자열이 들어가면 레이아웃이 깨진다 — `max-width` · `overflow: hidden`
+  · `text-overflow: ellipsis` 를 기본으로 건다
+- 클라이언트 단순 연산에 실행 버튼을 두지 않는다 (6.4 와 동일)
+
+---
+
+## 7. 처음부터 띄우기
+
+```bash
+git clone <repo> && cd <repo>/eibe
+git checkout feat/unified-platform
+
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+
+cp .env.example .env
+# EIBE_SECRET_KEY 를 채운다:
+#   python -c "import secrets; print(secrets.token_urlsafe(48))"
+# 비워두면 임시 키가 생성되어 재시작마다 세션이 만료된다 (로컬은 무방)
+
+.venv/Scripts/python.exe -m alembic upgrade head
+.venv/Scripts/python.exe -m scripts.seed_dev
+.venv/Scripts/python.exe -m pytest              # 143개 통과해야 정상
+```
+
+서버 실행 — `start_server.bat` 더블클릭, 또는:
+
+```bash
+.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+**개발용 계정** (`seed_dev` 가 생성, production 에서는 실행 거부):
+
+| 계정 | 비밀번호 | 권한 |
+|---|---|---|
+| `admin` | `dev-password-1234` | ADMIN |
+| `operator` | `dev-password-1234` | OPERATOR |
+| `viewer` | `dev-password-1234` | VIEWER |
+
+`.env` 와 `.venv/`, `data/*.db` 는 gitignore 대상이므로 PC 마다 다시 만든다.
+
+---
+
+## 8. 사용자에게 물어봐야 할 것 (미결)
+
+1. **`.agents/AGENTS.md` 삭제 확정 여부** — 현재 working tree 에서 삭제된 상태로
+   커밋되지 않고 남아 있다 (§1)
+2. **`PurchaseOrder` 유지 여부** — 구 `PRODUCTION_DB`(생산)는 제거했다. 3단계
+   매칭이 이미 폐기된 기능이라 판단했으나, 되살려야 하면 알려달라
+3. **Firebase Data Connect vs 일반 관리형 Postgres** — FastAPI 를 앞에 두면
+   Data Connect 의 GraphQL·SDK·Security Rules 를 거의 안 쓰게 된다. 사내 사정이
+   있으면 그대로 가되, 없다면 Cloud SQL 이 더 단순하고 저렴하다.
+   설계는 양쪽 동일하므로 나중에 정해도 코드 변경은 없다
+
+---
+
+## 9. 파일 지도
+
+```
+eibe/
+├── docs/
+│   ├── STATE.md        ← 이 문서. 작업할 때마다 갱신한다
+│   └── patterns.md     ← 성공 패턴 아카이브 (P-01~P-15)
+├── app/
+│   ├── config.py       설정 단일 출처 (.env)
+│   ├── database.py     방언 격리 — 여기만 고치면 Postgres 전환
+│   ├── core/
+│   │   ├── dates.py    ISO 주차 (연말 경계 주의)
+│   │   ├── deps.py     인증·권한 가드
+│   │   ├── middleware.py  요청 ID · CSRF
+│   │   └── security.py PyJWT · bcrypt · CSRF 토큰
+│   ├── models/
+│   │   ├── types.py    ★ 금액 타입 — 반드시 여기 것만 쓴다
+│   │   ├── enums.py    CHECK 제약이 여기서 생성된다
+│   │   ├── master.py   brand · product · product_alias · warehouse · channel
+│   │   ├── scm.py      purchase_order · inbound · inventory_snapshot · monthly_order_plan
+│   │   ├── sales.py    sales_order · promotion
+│   │   └── metrics.py  weekly_metric (파생)
+│   ├── services/
+│   │   ├── forecasting.py  순수 함수. DB 를 모른다
+│   │   └── derive.py       판매 원장 → 주차 집계 (멱등)
+│   ├── routers/        auth · system (Phase 4 에서 확장)
+│   └── schemas/
+├── alembic/versions/   마이그레이션 2건
+├── scripts/
+│   ├── create_admin.py 운영용 계정 생성
+│   └── seed_dev.py     개발용 시드 (production 거부, 멱등)
+└── tests/              143개
+```
+
+### 접합점 — 이 두 개가 SCM 과 판매를 잇는 전부다
+
+```
+ProductAlias.source_name  →  Product      (구 lineup 시트)
+Channel.warehouse_id      →  Warehouse    (구 channelGroup 시트)
+```
