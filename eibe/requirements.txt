@@ -1,0 +1,30 @@
+# EIBE Unified Platform — Python 3.12
+#
+# DB 드라이버는 배포 대상에 맞춰 하나만 설치하면 된다.
+#   SQLite  : 표준 라이브러리 (추가 설치 불필요)
+#   Postgres: psycopg[binary]  (Firebase Data Connect / Cloud SQL)
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+alembic==1.14.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+email-validator==2.2.0
+python-multipart==0.0.20
+
+# 인증
+PyJWT==2.10.1
+bcrypt==4.2.1
+
+# 엑셀 I/O
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Postgres 전환 시 주석 해제
+# psycopg[binary]==3.2.3
+
+# --- 개발/테스트 전용 ---
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx==0.28.1
