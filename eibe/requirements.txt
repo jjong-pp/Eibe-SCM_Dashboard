@@ -21,7 +21,10 @@ PyJWT==2.10.1
 bcrypt==4.2.1
 
 # Excel I/O
-pandas==2.2.3
+#
+# openpyxl only. pandas was dropped in Phase 3b: reading a sheet row by row does
+# not need a DataFrame, and pandas turns blank cells into NaN (a float), which is
+# what forced the old parser to wrap every cell in pd.notna() and str().
 openpyxl==3.1.5
 
 # Uncomment when moving to PostgreSQL

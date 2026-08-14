@@ -10,6 +10,8 @@
 ## 1. 지금 어디까지 왔나
 
 ```
+(작업중)  feat(eibe): Phase 3 (part 2) — analytics and excel services
+fab7ec1  fix(eibe): make requirements.txt installable on Korean Windows
 d0f5480  refactor(eibe): resolve the three open decisions
 159071f  docs: record project state for handoff across machines
 2ed69af  feat(eibe): Phase 3 (part 1) — forecasting and derived aggregates
@@ -24,8 +26,8 @@ d0f5480  refactor(eibe): resolve the three open decisions
 
 | 항목 | 수치 |
 |---|---|
-| Python 코드 | 약 5,300줄 |
-| 테스트 | 147개 (전부 통과) |
+| Python 코드 | 약 5,200줄 (+ 테스트 2,900줄) |
+| 테스트 | 253개 (전부 통과) |
 | 마이그레이션 | 2건 |
 | 도메인 테이블 | 14개 |
 
@@ -62,23 +64,27 @@ d0f5480  refactor(eibe): resolve the three open decisions
 | 1 | 골격 — config · DB · Alembic · 인증 | ✅ |
 | 2 | 통합 도메인 모델 (14개 테이블) | ✅ |
 | 3a | `forecasting` · `derive` 서비스 | ✅ |
-| **3b** | **`analytics` 포팅 · `excel` 서비스** | **← 다음** |
-| 4 | API 라우터 (SCM + Sales Hub 계약) | ⬜ |
+| 3b | `analytics` 포팅 · `excel` 서비스 | ✅ |
+| **4** | **API 라우터 (SCM + Sales Hub 계약)** | **← 다음** |
 | 5 | 프론트엔드 통합 | ⬜ |
 | 6 | 시딩 · 테스트 마무리 | ⬜ |
 | 7 | 루트 승격 · 구 코드 폐기 · 문서 개정 | ⬜ |
 
-### Phase 3b 상세 (바로 다음 작업)
+### Phase 3b 결과 (완료)
 
-- **`services/analytics.py`** — 구 `sales code/domain/analytics.js` 1,074줄 포팅.
-  순수 함수 파이프라인이라 이식이 깔끔하다. ISO 주차 수동 구현부(약 60줄)는
-  `app/core/dates.py` 로 이미 대체됨.
-  - 담을 것: KPI(주/월, 전주·전월 대비), 채널 믹스, 포트폴리오, 행사 ROI, 알림
-  - 임계값은 구 `SheetSchema.ANALYTICS_THRESHOLDS` 참고
-    (`ALERT_PRODUCT_UP=50`, `ALERT_PRODUCT_DOWN=-25`, `ALERT_CHANNEL_DOWN=-20`, `ALERT_MAX=5`)
-- **`services/excel.py`** — 업로드 파싱 · 검증 · 매핑 · 청크 저장 · 템플릿 생성.
-  프론트 SheetJS 를 제거했으므로 서버가 전담한다.
-  - 업로드 후 `derive.rebuild_for_orders()` 를 호출해 해당 주차만 재집계
+- **`services/analytics.py`** — 구 `analytics.js` 1,074줄 포팅. KPI · 채널 믹스 ·
+  포트폴리오 · 행사 ROI · 알림 · 추이. 임계값은 구
+  `SheetSchema.ANALYTICS_THRESHOLDS` 를 그대로 옮겼다
+  (`ALERT_PRODUCT_UP=50`, `ALERT_PRODUCT_DOWN=-25`, `ALERT_CHANNEL_DOWN=-20`, `ALERT_MAX=5`).
+  옮기면서 바꾼 판단은 D14~D17 참조.
+- **`services/excel.py`** — 7종 양식 생성 · 파싱 · 검증 · 매핑 · 청크 적재.
+  판매 업로드는 끝나면 해당 주차만 재집계한다.
+
+**포팅하지 않은 것** — 구 `analytics.js` 의 `detailCatalog` / `buildWhy`.
+채널·제품을 눌렀을 때 나오는 드릴다운과 "왜 변했나" 서술이다. 계산이 아니라
+문장 조립("전주 대비 ▲12.3%", "행사 리프트 가능")이라 화면 형태가 정해지는
+Phase 5 에서 만드는 편이 맞다. 재료(주차별 채널·라인업 집계, 겹치는 행사)는
+이미 `analytics.py` 안에 있다.
 
 ### Phase 4 에서 구현해야 할 API 계약
 
@@ -115,6 +121,10 @@ POST      /auth/login    GET /auth/me
 | D11 | **발주 테이블 하나로 통합** | 구 `ORDER_DB`(발주)와 `MONTHLY_ORDER_PLAN`(계획)이 같은 사실을 두 곳에 저장했다. 발주는 월 1회이므로 확정된 계획이 곧 주문이다 → `MonthlyOrderPlan.status=CONFIRMED` + `purchase_code` |
 | D12 | **`.agents/AGENTS.md` 삭제** | Claude Code 가 읽지 않는 경로였다. 살릴 규칙은 루트 `CLAUDE.md` 와 §6 으로 이관. 원본은 `57c80d9` 에 |
 | D13 | **Data Connect vs 일반 Postgres 는 배포 시점에 결정** | 둘 다 PostgreSQL 이라 설계·코드가 동일하다. 지금 정할 이유가 없다 |
+| D14 | **주간 비교는 같은 경과일수끼리** | 구 버전은 이번 주만 기준일에서 자르고 직전 주는 일요일까지 통째로 썼다. 수요일에 열면 3일 대 7일이라 WoW 가 늘 폭락으로 보인다. 월 비교는 구 버전도 `sameDayPrevMonth` 로 맞춰져 있었으므로 주 비교를 거기에 맞춘 것이다 |
+| D15 | **서비스 출력에 HTML 을 넣지 않는다** | 구 알림 문구에는 `<strong>` 이 박혀 있었다. 표현을 서비스가 정하면 재사용이 막히고, 그 문자열을 innerHTML 에 꽂으면 업로드된 제품명이 스크립트가 된다 |
+| D16 | **'기준선 없음'은 `None`, 큰 수로 채우지 않는다** | 구 버전은 리프트를 `99999`, 시작 전 행사를 `-100%` 로 내보냈다. 화면이 `-` 로 그릴 수 있게 없음을 없음으로 돌려준다 |
+| D17 | **pandas 제거, openpyxl 만 쓴다** | 시트를 행 단위로 읽는 데 DataFrame 이 필요 없다. pandas 는 빈 칸을 `NaN`(float) 으로 만들어 구 파서가 셀마다 `pd.notna()` 와 `str()` 을 두르게 했고, 그 과정에서 날짜·금액이 문자열로 뭉개졌다 |
 
 ### D11 보충 — 발주 추적이 끊기지 않는 이유
 
@@ -262,7 +272,7 @@ cp .env.example .env
 
 .venv/Scripts/python.exe -m alembic upgrade head
 .venv/Scripts/python.exe -m scripts.seed_dev
-.venv/Scripts/python.exe -m pytest              # 147개 통과해야 정상
+.venv/Scripts/python.exe -m pytest              # 253개 통과해야 정상
 ```
 
 서버 실행 — `start_server.bat` 더블클릭, 또는:
@@ -344,14 +354,16 @@ eibe/
 │   │   └── metrics.py  weekly_metric (파생)
 │   ├── services/
 │   │   ├── forecasting.py  순수 함수. DB 를 모른다
-│   │   └── derive.py       판매 원장 → 주차 집계 (멱등)
+│   │   ├── derive.py       판매 원장 → 주차 집계 (멱등)
+│   │   ├── analytics.py    매출 대시보드 지표 (구 analytics.js)
+│   │   └── excel.py        양식 생성 · 업로드 파싱 · 적재
 │   ├── routers/        auth · system (Phase 4 에서 확장)
 │   └── schemas/
 ├── alembic/versions/   마이그레이션 2건
 ├── scripts/
 │   ├── create_admin.py 운영용 계정 생성
 │   └── seed_dev.py     개발용 시드 (production 거부, 멱등)
-└── tests/              147개
+└── tests/              253개
 ```
 
 ### 접합점 — 이 두 개가 SCM 과 판매를 잇는 전부다

@@ -30,7 +30,7 @@ from app.models.auth import Role, User
 from app.models.enums import BrandCategory, InboundStatus, MetricSource, WarehouseType
 from app.models.master import Brand, Channel, Product, ProductAlias, Warehouse
 from app.models.metrics import WeeklyMetric
-from app.models.sales import SalesOrder
+from app.models.sales import Promotion, SalesOrder
 from app.models.scm import Inbound, InventorySnapshot
 from app.services.derive import (
     apply_inventory_flow,
@@ -77,6 +77,22 @@ ALIASES = [
     ("L10 Ultra", "L10ULTRA", "L10 시리즈"),
     ("드리미 X30", "X30", "X30 시리즈"),
 ]
+
+# 행사. (채널, 원본 제품명, 구좌, 행사명, 기간(일)) 형태다.
+#
+# 기간을 '몇 주 전'으로 못박지 않고 **실제 판매가 있는 날에 맞춰 붙인다.**
+# 처음에는 고정 오프셋으로 만들었는데, 판매가 주당 1건씩 임의의 요일에
+# 찍히다 보니 네 건 중 세 건이 행사 기간 안에 판매 0으로 잡혔다. 그러면
+# 리프트가 전부 -100% 라 행사 ROI 화면을 검증할 수 없다.
+PROMOTIONS = [
+    ("쿠팡", "드리미 H12 Pro", "메인 배너", "쿠팡 여름 특가", 7),
+    ("이마트", "드리미 X30", "행사 매대", "이마트 로봇청소기 페어", 5),
+    ("네이버", "드리미 L10 울트라", "럭키투데이", "네이버 리빙위크", 10),
+]
+
+# 아직 시작하지 않은 행사. 등록만 해두는 것이 실제 운영 형태이고,
+# '시작 전'과 '진행했는데 안 팔림'을 화면이 구분하는지 확인하는 데 쓴다.
+UPCOMING_PROMOTION = ("자사몰", "", "전체 기획전", "자사몰 브랜드데이", 4)
 
 
 def _guard_environment() -> None:
@@ -295,6 +311,67 @@ def seed_activity(db: Session, brand: Brand, weeks: int = 26) -> None:
                 )
         db.commit()
 
+    # ── 행사 ─────────────────────────────────────────────────────────
+    # 판매 구간 안에 걸쳐야 리프트를 계산할 수 있다. 행사 시작 직전 14일이
+    # 기준선이므로, 데이터 맨 앞에 붙이면 기준선이 비어 배수가 나오지 않는다.
+    if db.scalar(select(Promotion).limit(1)) is None:
+        product_by_source = {
+            alias.source_name: alias.product_id
+            for alias in db.scalars(select(ProductAlias))
+        }
+        channel_by_name = {channel.name: channel.id for channel in channels}
+        list_price = Decimal("399000")
+
+        def add_promotion(
+            start: date, days: int, channel_name: str, source_product: str,
+            slot: str, event: str,
+        ) -> None:
+            db.add(
+                Promotion(
+                    brand_id=brand.id,
+                    start_date=start,
+                    end_date=start + timedelta(days=days - 1),
+                    source_product_name=source_product or None,
+                    source_channel_name=channel_name,
+                    product_id=product_by_source.get(source_product),
+                    channel_id=channel_by_name.get(channel_name),
+                    slot_name=slot,
+                    event_name=event,
+                    list_price=list_price,
+                    price=(list_price * Decimal("0.8")).quantize(Decimal("1")),
+                    discount_rate=Decimal("20.000"),
+                    gift="사은품 필터 2종",
+                    is_marketing=True,
+                    is_confirmed=True,
+                )
+            )
+
+        for channel_name, source_product, slot, event, days in PROMOTIONS:
+            product_id = product_by_source.get(source_product)
+            # 최근 판매 하나를 골라 그 날이 행사 둘째 날이 되게 붙인다.
+            # 기준선(직전 14일)도 데이터 안에 들어오도록 마지막 주는 피한다.
+            anchor_sale = db.scalar(
+                select(SalesOrder.ship_date)
+                .where(
+                    SalesOrder.source_channel_name == channel_name,
+                    SalesOrder.product_id == product_id,
+                    SalesOrder.ship_date <= monday - timedelta(days=7),
+                )
+                .order_by(SalesOrder.ship_date.desc())
+                .limit(1)
+            )
+            if anchor_sale is None:
+                continue
+            add_promotion(
+                anchor_sale - timedelta(days=1), days, channel_name,
+                source_product, slot, event,
+            )
+
+        channel_name, source_product, slot, event, days = UPCOMING_PROMOTION
+        add_promotion(monday + timedelta(days=7), days, channel_name,
+                      source_product, slot, event)
+        db.commit()
+
 
 def build_metrics(db: Session) -> int:
     """주차 집계를 만든다.
@@ -349,7 +426,11 @@ def main() -> int:
         orders = db.query(SalesOrder).count()
         inbounds = db.query(Inbound).count()
         snapshots = db.query(InventorySnapshot).count()
-        print(f"실적: 판매 {orders} · 입고 {inbounds} · 재고 {snapshots}")
+        promotions = db.query(Promotion).count()
+        print(
+            f"실적: 판매 {orders} · 입고 {inbounds} · 재고 {snapshots} · "
+            f"행사 {promotions}"
+        )
 
         metrics = build_metrics(db)
         print(f"주차 집계 {metrics}건 생성")

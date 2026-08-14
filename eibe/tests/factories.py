@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.dates import iso_week_of
 from app.models.enums import BrandCategory, WarehouseType
 from app.models.master import Brand, Channel, Product, ProductAlias, Warehouse
-from app.models.sales import SalesOrder
+from app.models.sales import Promotion, SalesOrder
 
 
 def make_brand(
@@ -91,6 +91,31 @@ def make_alias(
     db.commit()
     db.refresh(alias)
     return alias
+
+
+def make_promotion(
+    db: Session,
+    brand: Brand,
+    start_date: date,
+    end_date: date,
+    source_channel_name: str = "쿠팡",
+    source_product_name: str | None = "드리미 H12 Pro",
+    event_name: str = "여름 특가",
+    slot_name: str | None = "메인 배너",
+) -> Promotion:
+    promotion = Promotion(
+        brand_id=brand.id,
+        start_date=start_date,
+        end_date=end_date,
+        source_channel_name=source_channel_name,
+        source_product_name=source_product_name,
+        event_name=event_name,
+        slot_name=slot_name,
+    )
+    db.add(promotion)
+    db.commit()
+    db.refresh(promotion)
+    return promotion
 
 
 def make_sales_order(

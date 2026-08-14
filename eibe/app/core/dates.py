@@ -89,6 +89,16 @@ def month_key(value: date) -> str:
     return f"{value.year}-{value.month:02d}"
 
 
+def month_start(value: date) -> date:
+    """그 달의 1일."""
+    return value.replace(day=1)
+
+
+def month_end(value: date) -> date:
+    """그 달의 말일. 다음 달 1일에서 하루를 뺀다 — 윤년을 따로 다루지 않는다."""
+    return add_months(value.replace(day=1), 1) - timedelta(days=1)
+
+
 def add_months(value: date, months: int) -> date:
     """월 단위 이동. 말일은 대상 월의 말일로 클램프한다 (1/31 +1개월 → 2/28)."""
     total = value.year * 12 + (value.month - 1) + months
