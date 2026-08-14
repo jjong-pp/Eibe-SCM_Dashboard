@@ -10,6 +10,7 @@
 ## 1. 지금 어디까지 왔나
 
 ```
+d0f5480  refactor(eibe): resolve the three open decisions
 159071f  docs: record project state for handoff across machines
 2ed69af  feat(eibe): Phase 3 (part 1) — forecasting and derived aggregates
 297d44a  feat(eibe): Phase 2 — unified domain model
@@ -17,6 +18,9 @@
 2c05615  chore: preserve Sales Hub draft before unified rebuild
 57c80d9  (master 시작점 — 구 SCM 코드)
 ```
+
+> ⚠️ **이 브랜치는 아직 원격에 push 되지 않았다.** 다른 PC 에서 이어받으려면
+> 먼저 올려야 한다 — §7.1 참조.
 
 | 항목 | 수치 |
 |---|---|
@@ -240,6 +244,10 @@ SQLite 에는 네이티브 DECIMAL 이 없어 float64 를 경유하고, 유효�
 
 ## 7. 처음부터 띄우기
 
+> 아래 절차는 **빈 클론에서 한 줄씩 실제로 실행해 검증했다** (2026-08-14).
+> 검증 과정에서 `requirements.txt` 인코딩 문제가 드러나 고쳤다 — 자세한 내용은
+> `docs/patterns.md` P-16. 절차를 고치면 다시 빈 클론에서 확인할 것.
+
 ```bash
 git clone <repo> && cd <repo>/eibe
 git checkout feat/unified-platform
@@ -272,6 +280,35 @@ cp .env.example .env
 | `viewer` | `dev-password-1234` | VIEWER |
 
 `.env` 와 `.venv/`, `data/*.db` 는 gitignore 대상이므로 PC 마다 다시 만든다.
+
+### 7.1 다음 PC 로 옮기기 — 먼저 push 해야 한다
+
+**작성 시점에 `feat/unified-platform` 은 원격에 올라가 있지 않다.** 클론으로는
+받을 수 없으므로, 다른 PC 로 넘기려면 먼저 올려야 한다.
+
+```bash
+git push -u origin feat/unified-platform
+```
+
+원격 저장소는 `origin` (GitHub) 하나가 설정되어 있다. push 후 다음 PC 에서:
+
+```bash
+git clone <repo-url> && cd <repo>
+git checkout feat/unified-platform
+```
+
+이후는 위 §7 절차 그대로다.
+
+**gitignore 때문에 따라가지 않는 것** — 각 PC 에서 다시 만든다:
+
+| 항목 | 만드는 법 |
+|---|---|
+| `.venv/` | `python -m venv .venv` + `pip install -r requirements.txt` |
+| `eibe/.env` | `cp .env.example .env` (시크릿은 비워도 로컬은 동작) |
+| `eibe/data/eibe.db` | `alembic upgrade head` + `scripts.seed_dev` |
+
+**저장소에 없어도 되는 것**: 로컬 DB 는 시드로 재생성되므로 옮길 필요가 없다.
+난수 시드를 고정해 두었기 때문에 어느 PC 에서든 같은 샘플 데이터가 나온다.
 
 ---
 

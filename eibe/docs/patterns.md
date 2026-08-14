@@ -35,6 +35,7 @@
 | [P-13](#p-13) | 로그인 실패 응답 시간을 맞춘다 | 보안 |
 | [P-14](#p-14) | 파이프라인은 실데이터로 한 번 끝까지 돌린다 | 테스트 |
 | [P-15](#p-15) | 벌크 삭제는 세션 아이덴티티 맵을 정리한다 | SQLAlchemy |
+| [P-16](#p-16) | 인수인계 문서는 빈 클론에서 실행해 검증한다 | 문서 |
 
 ---
 
@@ -159,8 +160,27 @@ Alembic 은 `configparser` 로 ini 를 읽으면서 `encoding="locale"` 을 쓴�
 한글 설명은 내가 인코딩을 지정해 읽는 파일(`.py`)에 둔다.
 
 ### 적용 범위
-`.ini`, `.cfg`, `.bat`, `.cmd`. 로케일이 UTF-8 인 환경에서는 문제가 없지만,
-저장소는 어느 PC 에서든 동작해야 한다.
+`.ini`, `.cfg`, `.bat`, `.cmd`, **`requirements.txt`**.
+로케일이 UTF-8 인 환경에서는 문제가 없지만, 저장소는 어느 PC 에서든 동작해야 한다.
+
+### 후일담 — 이 규칙을 스스로 어겼다
+
+이 패턴을 적어두고도 `requirements.txt` 에 한글 주석과 `—`(em dash)를 넣었다.
+신규 클론에서 설치가 첫 줄부터 죽었다.
+
+```
+UnicodeDecodeError: 'cp949' codec can't decode byte 0xe2 in position 24
+```
+
+그 뒤 `python -m alembic` 이 "No module named alembic.__main__" 로 실패했는데,
+이건 별개 문제가 아니라 **설치가 안 됐기 때문**이었다. 원인 하나가 서로 무관해
+보이는 증상 두 개로 나타난 것이다.
+
+**판단 기준을 넓혀야 한다:** "내가 인코딩을 지정해 읽는 파일"이 아니라
+**"외부 도구가 읽는 모든 텍스트 파일"** 이 대상이다. pip · cmd · configparser 는
+전부 로케일 인코딩을 쓴다.
+
+발견 경위는 [P-16](#p-16) 참조.
 
 ---
 
@@ -645,3 +665,61 @@ db.query(WeeklyMetric).filter(...).delete(synchronize_session="fetch")
 ### 언제 False 를 써도 되는가
 삭제 직후 세션을 버리는 경우(요청이 끝나거나 `expunge_all()` 을 부르는 경우).
 같은 세션에서 계속 작업한다면 `"fetch"` 가 안전하다.
+
+---
+
+<a id="p-16"></a>
+## P-16. 인수인계 문서는 빈 클론에서 실행해 검증한다
+
+**영역** 문서 · 인수인계
+
+### 문제
+"다른 PC 에서 이대로 하면 된다"고 적은 설치 절차는, **적은 사람의 PC 에서는
+이미 다 갖춰져 있어서** 검증되지 않는다. 가상환경이 있고, 패키지가 깔려 있고,
+`.env` 가 존재하는 상태에서 문서를 쓰기 때문이다.
+
+### 겪은 일
+STATE.md 에 설치 절차를 적고 나서 실제로 검증해 보니 **첫 명령부터 실패**했다.
+
+```bash
+git clone -q --branch feat/unified-platform <repo> /tmp/handoff-test
+cd /tmp/handoff-test/eibe
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+#   UnicodeDecodeError: 'cp949' codec can't decode byte 0xe2
+```
+
+원본 저장소에서는 이미 설치가 끝나 있어 아무도 몰랐다. 절차를 문서에 적은
+당사자도 몰랐다.
+
+### 해결
+빈 클론에 문서의 명령을 **한 줄씩 그대로** 실행한다. 요약하거나 건너뛰지 않는다.
+
+```bash
+git clone --branch <branch> <repo> <임시경로>
+cd <임시경로>/eibe
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+cp .env.example .env
+.venv/Scripts/python.exe -m alembic upgrade head
+.venv/Scripts/python.exe -m scripts.seed_dev
+.venv/Scripts/python.exe -m pytest
+.venv/Scripts/python.exe -m uvicorn app.main:app --port <빈포트>
+# 로그인까지 실제로 해 본 뒤 정리
+```
+
+### 함정 — 중간 단계의 성공을 가정하지 말 것
+
+검증 스크립트를 이렇게 짰다가 한 번 속았다.
+
+```bash
+pip install -q -r requirements.txt 2>&1 | tail -5
+echo "[1] 의존성 설치 완료"      # 실패해도 무조건 출력된다
+```
+
+설치가 죽었는데 "완료"가 찍혔고, 그 다음 단계의 실패를 **다른 원인으로 오해**했다.
+각 단계의 종료 코드를 확인하거나 `set -e` 를 건다.
+
+### 마지막에 정리한다
+검증용 클론과 띄운 서버는 반드시 지운다. 포트를 물고 있는 좀비 프로세스가
+남으면 다음 작업에서 원인 모를 무응답으로 되돌아온다.
