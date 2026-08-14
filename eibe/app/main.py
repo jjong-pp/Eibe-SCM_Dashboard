@@ -26,7 +26,9 @@ from app.core.security import hash_password
 from app.database import SessionLocal
 from app.models.auth import Role, User
 from app.routers import auth as auth_router
+from app.routers import master as master_router
 from app.routers import system as system_router
+from app.routers import users as users_router
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -117,6 +119,8 @@ def create_app() -> FastAPI:
     app.include_router(system_router.public_router)
     app.include_router(system_router.router)
     app.include_router(auth_router.router)
+    app.include_router(master_router.router)
+    app.include_router(users_router.router)
 
     return app
 

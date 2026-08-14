@@ -109,10 +109,29 @@ def login(client: TestClient, username: str, password: str) -> str:
     return res.json()["csrf_token"]
 
 
+def sign_in(
+    client: TestClient,
+    db: Session,
+    role: Role = Role.ADMIN,
+    username: str | None = None,
+) -> dict[str, str]:
+    """계정을 만들고 로그인한 뒤 **CSRF 헤더**를 돌려준다.
+
+    상태를 바꾸는 요청에는 이 헤더가 반드시 필요하다 (미들웨어에서 강제).
+    라우터 테스트가 매번 같은 준비 코드를 반복하지 않도록 여기에 둔다.
+
+        headers = sign_in(client, db, Role.ADMIN)
+        client.post("/api/master/brands", json={...}, headers=headers)
+    """
+    username = username or f"{role.value.lower()}-user"
+    make_user(db, username, "test-password-123", role)
+    return {settings.CSRF_HEADER_NAME: login(client, username, "test-password-123")}
+
+
 @pytest.fixture
 def csrf_header() -> Generator[dict[str, str], None, None]:
     """CSRF 헤더를 만드는 헬퍼를 쓰기 쉽게 노출."""
     yield {}
 
 
-__all__ = ["make_user", "login", "settings"]
+__all__ = ["make_user", "login", "sign_in", "settings"]
