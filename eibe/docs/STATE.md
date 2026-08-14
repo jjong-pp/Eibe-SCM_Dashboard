@@ -10,7 +10,7 @@
 ## 1. 지금 어디까지 왔나
 
 ```
-(작업중)  feat(eibe): Phase 3 (part 2) — analytics and excel services
+c98646f  feat(eibe): Phase 3 (part 2) — analytics and excel services
 fab7ec1  fix(eibe): make requirements.txt installable on Korean Windows
 d0f5480  refactor(eibe): resolve the three open decisions
 159071f  docs: record project state for handoff across machines
