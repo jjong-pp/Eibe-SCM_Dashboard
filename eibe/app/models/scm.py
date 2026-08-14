@@ -29,7 +29,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 from app.models.enums import InboundStatus, PlanStatus, check_in
 from app.models.master import Product, Warehouse
-from app.models.types import Money, Rate, UnitPrice
+from app.models.types import EnumStr, Money, Rate, UnitPrice
 
 
 class Inbound(Base, TimestampMixin):
@@ -77,7 +77,7 @@ class Inbound(Base, TimestampMixin):
     payment_date: Mapped[date | None] = mapped_column(Date, default=None)
 
     status: Mapped[InboundStatus] = mapped_column(
-        String(16), default=InboundStatus.DEPARTED, nullable=False
+        EnumStr(InboundStatus), default=InboundStatus.DEPARTED, nullable=False
     )
 
     product: Mapped[Product] = relationship()
@@ -155,7 +155,7 @@ class MonthlyOrderPlan(Base, TimestampMixin):
     system_suggested_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     user_modified_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[PlanStatus] = mapped_column(
-        String(16), default=PlanStatus.DRAFT, nullable=False
+        EnumStr(PlanStatus), default=PlanStatus.DRAFT, nullable=False
     )
     # 확정 후 부여되는 발주번호. Inbound.purchase_code 와 같은 값이라
     # 발주 → 입고 추적이 이어진다.

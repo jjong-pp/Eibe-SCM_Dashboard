@@ -24,7 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 from app.models.enums import BrandCategory, WarehouseType, check_in
-from app.models.types import Money, UnitPrice
+from app.models.types import EnumStr, Money, UnitPrice
 
 
 class Brand(Base, TimestampMixin):
@@ -42,7 +42,7 @@ class Brand(Base, TimestampMixin):
     # URL·API 에서 쓰는 안정적인 식별자 (구 Sales Hub 의 slugifyBrand 대체)
     slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     category: Mapped[BrandCategory] = mapped_column(
-        String(16), default=BrandCategory.FOOD, nullable=False
+        EnumStr(BrandCategory), default=BrandCategory.FOOD, nullable=False
     )
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
 
@@ -128,7 +128,7 @@ class Warehouse(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     type: Mapped[WarehouseType] = mapped_column(
-        String(16), default=WarehouseType.ONLINE, nullable=False
+        EnumStr(WarehouseType), default=WarehouseType.ONLINE, nullable=False
     )
     # 이 창고가 받아줄 수 있는 잔여 유통기한 하한 (일)
     allowed_expiry_days: Mapped[int] = mapped_column(Integer, default=90, nullable=False)

@@ -239,6 +239,49 @@ def rebuild_for_orders(db: Session, orders: list[SalesOrder]) -> RebuildResult:
     return rebuild_weekly_metrics(db, since=min(ship_dates), until=max(ship_dates))
 
 
+def stock_on(db: Session, reference: date) -> dict[tuple[int, int], tuple[int, date]]:
+    """해당 시점 이전의 가장 최근 스냅샷 기준 (품목,창고)별 재고.
+
+    수량과 함께 **어느 날짜의 스냅샷을 썼는지** 돌려준다. 두 시점이 같은
+    스냅샷을 가리키면 그 사이의 재고 변화를 알 수 없다는 뜻이므로, 호출부가
+    그것을 구분할 수 있어야 한다.
+
+    '가장 최근 스냅샷' 규칙은 재고 현황·유통기한·이관 판단이 모두 쓰므로
+    여기 한 곳에만 둔다. 두 벌이 되면 화면마다 다른 재고가 보인다.
+    """
+    from app.models.scm import InventorySnapshot  # 순환 참조 회피
+
+    latest = db.execute(
+        select(
+            InventorySnapshot.product_id,
+            InventorySnapshot.warehouse_id,
+            func.max(InventorySnapshot.snapshot_date),
+        )
+        .where(InventorySnapshot.snapshot_date <= reference)
+        .group_by(InventorySnapshot.product_id, InventorySnapshot.warehouse_id)
+    ).all()
+    if not latest:
+        return {}
+
+    used_date = {(p, w): d for p, w, d in latest}
+    rows = db.execute(
+        select(
+            InventorySnapshot.product_id,
+            InventorySnapshot.warehouse_id,
+            func.sum(InventorySnapshot.qty),
+        )
+        .where(
+            tuple_(
+                InventorySnapshot.product_id,
+                InventorySnapshot.warehouse_id,
+                InventorySnapshot.snapshot_date,
+            ).in_([(p, w, d) for p, w, d in latest])
+        )
+        .group_by(InventorySnapshot.product_id, InventorySnapshot.warehouse_id)
+    ).all()
+    return {(p, w): (int(q or 0), used_date[(p, w)]) for p, w, q in rows}
+
+
 def apply_inventory_flow(db: Session, week: IsoWeek) -> int:
     """재고 스냅샷에서 기초·기말·출고량을 채운다.
 
@@ -250,52 +293,15 @@ def apply_inventory_flow(db: Session, week: IsoWeek) -> int:
     Returns:
         갱신된 집계 행 수.
     """
-    from app.models.scm import Inbound, InventorySnapshot  # 순환 참조 회피
+    from app.models.scm import Inbound  # 순환 참조 회피
 
     week_start = week.start_date()
     week_end = week.end_date()
 
-    def _stock_on(reference: date) -> dict[tuple[int, int], tuple[int, date]]:
-        """해당 시점 이전의 가장 최근 스냅샷 기준 (품목,창고)별 재고.
-
-        수량과 함께 **어느 날짜의 스냅샷을 썼는지** 돌려준다. 기초와 기말이
-        같은 스냅샷을 가리키면 그 주의 재고 변화를 알 수 없다는 뜻이므로,
-        호출부가 그것을 구분할 수 있어야 한다.
-        """
-        latest = db.execute(
-            select(
-                InventorySnapshot.product_id,
-                InventorySnapshot.warehouse_id,
-                func.max(InventorySnapshot.snapshot_date),
-            )
-            .where(InventorySnapshot.snapshot_date <= reference)
-            .group_by(InventorySnapshot.product_id, InventorySnapshot.warehouse_id)
-        ).all()
-        if not latest:
-            return {}
-
-        used_date = {(p, w): d for p, w, d in latest}
-        rows = db.execute(
-            select(
-                InventorySnapshot.product_id,
-                InventorySnapshot.warehouse_id,
-                func.sum(InventorySnapshot.qty),
-            )
-            .where(
-                tuple_(
-                    InventorySnapshot.product_id,
-                    InventorySnapshot.warehouse_id,
-                    InventorySnapshot.snapshot_date,
-                ).in_([(p, w, d) for p, w, d in latest])
-            )
-            .group_by(InventorySnapshot.product_id, InventorySnapshot.warehouse_id)
-        ).all()
-        return {(p, w): (int(q or 0), used_date[(p, w)]) for p, w, q in rows}
-
-    beginning = _stock_on(week_start)
+    beginning = stock_on(db, week_start)
     # 기말은 그 주가 끝난 직후 시점으로 본다. 주 1회(월요일) 스냅샷을 뜨는
     # 운영에서는 다음 주 월요일 값이 이번 주의 마감 재고가 된다.
-    ending = _stock_on(week_end + timedelta(days=1))
+    ending = stock_on(db, week_end + timedelta(days=1))
 
     inbound_rows = db.execute(
         select(
@@ -350,15 +356,28 @@ def apply_inventory_flow(db: Session, week: IsoWeek) -> int:
 
 
 def load_history(
-    db: Session, product_id: int, anchor: IsoWeek, weeks: int = 12
+    db: Session,
+    product_id: int,
+    anchor: IsoWeek,
+    weeks: int = 12,
+    *,
+    warehouse_id: int | None = None,
 ) -> tuple[list[int], list[int]]:
     """예측 입력용 이력 — (출고량, 판매량) 을 주차 순서대로.
 
-    창고를 합산한 전사 기준이다. 빠진 주차는 0으로 채우지 않고 건너뛴다 —
-    데이터가 없는 주를 0 수요로 잡으면 소진율을 과소평가하게 된다.
+    기본은 창고를 합산한 전사 기준이다. `warehouse_id` 를 주면 그 거점만
+    본다 — 거점별 재고일수를 낼 때 쓴다. 빠진 주차는 0으로 채우지 않고
+    건너뛴다: 데이터가 없는 주를 0 수요로 잡으면 소진율을 과소평가한다.
     """
     start = anchor.shift(-(weeks - 1))
     boundaries = [(w.year, w.week) for w in _week_span(start, anchor)]
+
+    conditions = [
+        WeeklyMetric.product_id == product_id,
+        tuple_(WeeklyMetric.iso_year, WeeklyMetric.iso_week).in_(boundaries),
+    ]
+    if warehouse_id is not None:
+        conditions.append(WeeklyMetric.warehouse_id == warehouse_id)
 
     rows = db.execute(
         select(
@@ -367,10 +386,7 @@ def load_history(
             func.sum(WeeklyMetric.outflow_qty),
             func.sum(WeeklyMetric.sales_qty),
         )
-        .where(
-            WeeklyMetric.product_id == product_id,
-            tuple_(WeeklyMetric.iso_year, WeeklyMetric.iso_week).in_(boundaries),
-        )
+        .where(*conditions)
         .group_by(WeeklyMetric.iso_year, WeeklyMetric.iso_week)
         .order_by(WeeklyMetric.iso_year, WeeklyMetric.iso_week)
     ).all()

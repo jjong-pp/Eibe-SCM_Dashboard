@@ -28,7 +28,14 @@ from app.core.security import hash_password
 from app.database import SessionLocal
 from app.models.auth import Role, User
 from app.models.enums import BrandCategory, InboundStatus, MetricSource, WarehouseType
-from app.models.master import Brand, Channel, Product, ProductAlias, Warehouse
+from app.models.master import (
+    Brand,
+    Channel,
+    LogisticsCost,
+    Product,
+    ProductAlias,
+    Warehouse,
+)
 from app.models.metrics import WeeklyMetric
 from app.models.sales import Promotion, SalesOrder
 from app.models.scm import Inbound, InventorySnapshot
@@ -177,6 +184,39 @@ def seed_master(db: Session) -> Brand:
     return brand
 
 
+def _weekly_sales_by_warehouse(
+    db: Session, channels: list[Channel]
+) -> dict[tuple[int, int, date], int]:
+    """(품목, 창고, 주시작일) → 판매 수량.
+
+    재고 감소를 **그 창고에서 실제로 팔린 만큼** 으로 맞추기 위한 것이다.
+    처음에는 매주 무작위로 깎았는데, 판매와 무관하게 움직이다 보니
+    `출고 - 판매`(감모 버퍼)가 주간수요의 절반까지 부풀었다. 계산은 맞지만
+    그런 숫자로는 예측 화면이 그럴듯한지 눈으로 볼 수 없다.
+    """
+    warehouse_of = {channel.id: channel.warehouse_id for channel in channels}
+    totals: dict[tuple[int, int, date], int] = {}
+    for order in db.scalars(select(SalesOrder)):
+        warehouse_id = warehouse_of.get(order.channel_id)
+        if warehouse_id is None:
+            continue
+        week_start = order.ship_date - timedelta(days=order.ship_date.weekday())
+        key = (order.product_id, warehouse_id, week_start)
+        totals[key] = totals.get(key, 0) + order.qty
+    return totals
+
+
+def _network_weekly(
+    weekly_sales: dict[tuple[int, int, date], int],
+) -> dict[int, float]:
+    """품목별 전사 주간 판매량. 재고·입고 수량을 수요에 맞춰 잡는 기준이다."""
+    totals: dict[int, int] = {}
+    for (product_id, _warehouse_id, _week), qty in weekly_sales.items():
+        totals[product_id] = totals.get(product_id, 0) + qty
+    span = len({week for _p, _w, week in weekly_sales}) or 1
+    return {product_id: total / span for product_id, total in totals.items()}
+
+
 def seed_activity(db: Session, brand: Brand, weeks: int = 26) -> None:
     """최근 N주간의 판매·재고·입고 실적.
 
@@ -259,33 +299,111 @@ def seed_activity(db: Session, brand: Brand, weeks: int = 26) -> None:
     # 예측 엔진의 평탄화 상수가 0이 된다. 실제 운영과 같이 매주 뜬다.
     if db.scalar(select(InventorySnapshot).limit(1)) is None:
         warehouses = list(db.scalars(select(Warehouse)))
-        for product in products:
-            for warehouse in warehouses:
-                stock = rng.randint(3000, 9000)
-                for week_offset in range(weeks, -1, -1):
+        weekly_sales = _weekly_sales_by_warehouse(db, channels)
+        network_weekly = _network_weekly(weekly_sales)
+
+        # 현재 재고를 **원하는 재고일수에 맞춰 정한 뒤 과거로 거슬러 쌓는다.**
+        # 앞에서 임의의 시작값을 두고 내려오게 했더니 현재 재고가 수요의
+        # 수백 주치가 되어 히트맵이 통째로 한 색(risk-safe)이 됐다. 네 구간이
+        # 모두 나와야 화면을 검증할 수 있다 (6 / 9 / 13주 경계).
+        target_weeks = [4.0, 7.5, 11.0, 16.0]
+
+        for product_index, product in enumerate(products):
+            for warehouse_index, warehouse in enumerate(warehouses):
+                sold_by_week = {
+                    week_start: qty
+                    for (p, w, week_start), qty in weekly_sales.items()
+                    if p == product.id and w == warehouse.id
+                }
+                average_weekly = (
+                    sum(sold_by_week.values()) / len(sold_by_week)
+                    if sold_by_week
+                    else 0
+                )
+
+                if average_weekly > 0:
+                    target = target_weeks[
+                        (product_index + warehouse_index) % len(target_weeks)
+                    ]
+                    stock = int(average_weekly * target)
+                else:
+                    # 판매 채널이 붙지 않은 거점(용인 메인·바이아웃)은 이관
+                    # 대기 물량으로 본다. 소진 이력이 없어 재고일수를 낼 수 없다.
+                    #
+                    # 이 물량도 전사 수요에 맞춰 잡는다. 고정값(2,000~5,000)을
+                    # 뒀더니 전사 재고일수가 100주를 넘어 발주 제안이 늘 0이 됐다.
+                    stock = int(network_weekly.get(product.id, 50) * rng.uniform(3, 7))
+
+                # 기한이 다른 두 로트로 나눠 담는다. 하나로 두면 FEFO 판정이
+                # 돌아갈 일이 없어 유통기한 화면을 검증할 수 없다 (P-17).
+                #
+                # 기한을 난수 범위로 뽑았더니 수요가 바뀔 때마다 위험 로트가
+                # 0이 됐다 나왔다 했다. **소진 예상일수에 비례해 정한다** —
+                # 절반은 그 안에 못 나가게(위험), 절반은 여유 있게.
+                near_qty_now = max(1, int(stock * 0.35))
+                clear_days = (
+                    near_qty_now / average_weekly * 7 if average_weekly > 0 else 180
+                )
+                at_risk_lot = (product_index + warehouse_index) % 2 == 0
+                near_expiry = monday + timedelta(
+                    days=max(5, int(clear_days * (0.6 if at_risk_lot else 3.0)))
+                )
+                far_expiry = monday + timedelta(days=rng.randint(400, 800))
+
+                # 최신 → 과거 순으로 거슬러 올라가며 판매분을 되돌려 놓는다.
+                for week_offset in range(0, weeks + 1):
                     snapshot_date = monday - timedelta(weeks=week_offset)
-                    db.add(
-                        InventorySnapshot(
-                            snapshot_date=snapshot_date,
-                            warehouse_id=warehouse.id,
-                            product_id=product.id,
-                            qty=stock,
+                    near_qty = min(stock, int(stock * 0.35))
+                    for expiry, qty in (
+                        (near_expiry, near_qty),
+                        (far_expiry, stock - near_qty),
+                    ):
+                        if qty <= 0:
+                            continue
+                        db.add(
+                            InventorySnapshot(
+                                snapshot_date=snapshot_date,
+                                warehouse_id=warehouse.id,
+                                product_id=product.id,
+                                expiry_date=expiry,
+                                qty=qty,
+                            )
                         )
-                    )
-                    # 매주 소진되다가 재고가 낮아지면 보충된다.
-                    stock -= rng.randint(80, 260)
-                    if stock < 800:
-                        stock += rng.randint(2000, 4000)
-                    stock = max(stock, 0)
+                    # 한 주 앞(과거) 스냅샷은 **그 주 동안 빠져나간 만큼** 더
+                    # 많아야 한다. 여기서 `snapshot_date` 주의 판매를 되돌리면
+                    # 한 주씩 밀려서, 집계가 `출고(W) = 판매(W+1)` 이 된다.
+                    # 그러면 감모 버퍼(출고 - 판매)가 음수로 나온다.
+                    previous_week = snapshot_date - timedelta(weeks=1)
+                    sold = sold_by_week.get(previous_week, 0)
+                    stock += sold + rng.randint(0, max(1, sold // 20))
+        db.commit()
+
+    # ── 물류비 (용인 메인 → 각 풀필먼트) ─────────────────────────────
+    # 이관 제안에 비용이 붙어야 화면이 '얼마짜리 이관인가'를 말할 수 있다.
+    if db.scalar(select(LogisticsCost).limit(1)) is None:
+        others = [w for w in db.scalars(select(Warehouse)) if w.id != hub.id]
+        for index, warehouse in enumerate(others):
+            db.add(
+                LogisticsCost(
+                    departure_warehouse_id=hub.id,
+                    arrival_warehouse_id=warehouse.id,
+                    cost_per_tu=Decimal(str(35000 + index * 5000)),
+                )
+            )
         db.commit()
 
     # ── 입고 파이프라인 ──────────────────────────────────────────────
     if db.scalar(select(Inbound).limit(1)) is None:
         statuses = list(InboundStatus)
+        network_weekly = _network_weekly(_weekly_sales_by_warehouse(db, channels))
         for index, product in enumerate(products):
             for step, status in enumerate(statuses):
                 eta = monday + timedelta(weeks=step * 3)
-                qty = rng.randint(500, 3000)
+                # 입고 물량도 수요에 맞춰 잡는다. 고정값(500~3,000)을 뒀더니
+                # 24주 시뮬레이션 내내 재고가 남아 발주 제안이 항상 0이었다.
+                qty = max(
+                    50, int(network_weekly.get(product.id, 50) * rng.uniform(1.5, 3.0))
+                )
                 unit_price = product.purchase_price
                 rate = Decimal("1385.50")
                 db.add(

@@ -28,7 +28,7 @@ from app.core.dates import IsoWeek
 from app.models.base import Base, TimestampMixin
 from app.models.enums import MetricSource, check_in
 from app.models.master import Product, Warehouse
-from app.models.types import Money
+from app.models.types import EnumStr, Money
 
 
 class WeeklyMetric(Base, TimestampMixin):
@@ -62,7 +62,7 @@ class WeeklyMetric(Base, TimestampMixin):
     )
 
     source: Mapped[MetricSource] = mapped_column(
-        String(16), default=MetricSource.DERIVED, nullable=False
+        EnumStr(MetricSource), default=MetricSource.DERIVED, nullable=False
     )
 
     product: Mapped[Product] = relationship()

@@ -8,6 +8,7 @@ from sqlalchemy import CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
+from app.models.types import EnumStr
 
 
 class Role(StrEnum):
@@ -51,7 +52,7 @@ class User(Base, TimestampMixin):
     # Enum 을 네이티브 타입이 아닌 문자열 + CHECK 로 저장한다.
     # Postgres 네이티브 ENUM 은 값 추가 시 마이그레이션이 까다롭다.
     role: Mapped[Role] = mapped_column(
-        String(16), default=Role.VIEWER, nullable=False
+        EnumStr(Role), default=Role.VIEWER, nullable=False
     )
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
 

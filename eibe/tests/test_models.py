@@ -12,7 +12,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 
 from app.models.base import Base
@@ -147,15 +147,33 @@ class TestDateTypes:
 class TestCheckConstraints:
     def test_invalid_brand_category_rejected(self, db: Session) -> None:
         db.add(Brand(name="x", slug="x", category="INVALID"))
-        with pytest.raises(IntegrityError):
+        with pytest.raises((IntegrityError, StatementError)):
             db.commit()
 
     def test_invalid_inbound_status_rejected(self, db: Session) -> None:
         brand = make_brand(db)
         product = make_product(db, brand)
         db.add(Inbound(product_id=product.id, unit_qty=1, status="배송중"))
-        with pytest.raises(IntegrityError):
+        with pytest.raises((IntegrityError, StatementError)):
             db.commit()
+
+    def test_check_constraints_still_guard_the_enum_columns(self) -> None:
+        """EnumStr 가 앞에서 걸러도 DB 제약은 남아 있어야 한다.
+
+        타입 계층은 이 앱을 거치는 쓰기만 막는다. psql·덤프 복원·다른 클라이언트가
+        직접 넣는 값까지 막는 것은 CHECK 제약뿐이므로 둘 다 있어야 한다.
+        """
+        checks = {
+            table.name: {
+                str(constraint.sqltext)
+                for constraint in table.constraints
+                if hasattr(constraint, "sqltext")
+            }
+            for table in Base.metadata.sorted_tables
+        }
+        assert any("FOOD" in text for text in checks["brand"])
+        assert any("해상운송중" in text for text in checks["inbound"])
+        assert any("DERIVED" in text for text in checks["weekly_metric"])
 
     def test_zero_pack_qty_rejected(self, db: Session) -> None:
         brand = make_brand(db)

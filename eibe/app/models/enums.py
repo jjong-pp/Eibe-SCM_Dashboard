@@ -20,6 +20,11 @@ class BrandCategory(StrEnum):
     FOOD = "FOOD"
     ELECTRONICS = "ELECTRONICS"
 
+    @property
+    def expiry_label(self) -> str:
+        """기한 컬럼에 붙일 이름. 화면마다 따로 분기하지 않도록 여기서 정한다."""
+        return "보증기한" if self is BrandCategory.ELECTRONICS else "유통기한"
+
 
 class WarehouseType(StrEnum):
     HUB = "HUB"          # 용인 메인창고 — 이관의 출발점
