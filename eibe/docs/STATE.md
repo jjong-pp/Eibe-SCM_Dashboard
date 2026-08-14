@@ -1,6 +1,6 @@
 # 개발 상태 — 인수인계 문서
 
-> **갱신 시점** 2026-08-13 · **브랜치** `feat/unified-platform`
+> **갱신 시점** 2026-08-14 · **브랜치** `feat/unified-platform`
 >
 > 다른 PC 에서 작업을 이어받을 때 이 문서만 읽으면 방향·속도·판단 기준이
 > 그대로 유지되도록 쓴 것이다. **작업을 진행할 때마다 갱신한다.**
@@ -10,6 +10,7 @@
 ## 1. 지금 어디까지 왔나
 
 ```
+159071f  docs: record project state for handoff across machines
 2ed69af  feat(eibe): Phase 3 (part 1) — forecasting and derived aggregates
 297d44a  feat(eibe): Phase 2 — unified domain model
 2e4a82e  feat(eibe): Phase 1 — application skeleton
@@ -20,14 +21,12 @@
 | 항목 | 수치 |
 |---|---|
 | Python 코드 | 약 5,300줄 |
-| 테스트 | 143개 (전부 통과) |
+| 테스트 | 147개 (전부 통과) |
 | 마이그레이션 | 2건 |
-| 도메인 테이블 | 15개 |
+| 도메인 테이블 | 14개 |
 
-**미해결로 남겨둔 것:** `.agents/AGENTS.md` 가 작업 중 삭제된 상태로 남아 있다
-(`git status` 에 ` D` 로 표시됨). 내용은 커밋 `57c80d9` 에 있고, 살릴 가치가 있는
-부분은 이 문서 §6 에 옮겨두었다. 삭제를 확정하려면 커밋하고, 되살리려면
-`git checkout 57c80d9 -- .agents/AGENTS.md`.
+`.agents/AGENTS.md` 는 삭제 확정됐다. 살릴 내용은 루트 `CLAUDE.md` 와 이 문서 §6
+으로 옮겨졌고, 원본이 필요하면 `git show 57c80d9:.agents/AGENTS.md` 로 꺼낸다.
 
 ---
 
@@ -57,7 +56,7 @@
 |---|---|---|
 | 0 | 안전망 — `sales code/` 커밋 | ✅ |
 | 1 | 골격 — config · DB · Alembic · 인증 | ✅ |
-| 2 | 통합 도메인 모델 (15개 테이블) | ✅ |
+| 2 | 통합 도메인 모델 (14개 테이블) | ✅ |
 | 3a | `forecasting` · `derive` 서비스 | ✅ |
 | **3b** | **`analytics` 포팅 · `excel` 서비스** | **← 다음** |
 | 4 | API 라우터 (SCM + Sales Hub 계약) | ⬜ |
@@ -109,6 +108,25 @@ POST      /auth/login    GET /auth/me
 | D8 | **ML 금지** | 사칙연산 기반 통계 평탄화만. 예측 근거가 항상 드러나야 한다 |
 | D9 | **httpOnly 쿠키 + CSRF 이중제출** | localStorage 토큰의 XSS 노출 제거 |
 | D10 | **폴더명 `eibe/`** | `platform/` 은 Python stdlib 모듈명이라 네임스페이스 패키지로 stdlib 을 가릴 수 있다 |
+| D11 | **발주 테이블 하나로 통합** | 구 `ORDER_DB`(발주)와 `MONTHLY_ORDER_PLAN`(계획)이 같은 사실을 두 곳에 저장했다. 발주는 월 1회이므로 확정된 계획이 곧 주문이다 → `MonthlyOrderPlan.status=CONFIRMED` + `purchase_code` |
+| D12 | **`.agents/AGENTS.md` 삭제** | Claude Code 가 읽지 않는 경로였다. 살릴 규칙은 루트 `CLAUDE.md` 와 §6 으로 이관. 원본은 `57c80d9` 에 |
+| D13 | **Data Connect vs 일반 Postgres 는 배포 시점에 결정** | 둘 다 PostgreSQL 이라 설계·코드가 동일하다. 지금 정할 이유가 없다 |
+
+### D11 보충 — 발주 추적이 끊기지 않는 이유
+
+```
+MonthlyOrderPlan(status=CONFIRMED, purchase_code="PC-...")
+        │  같은 발주번호
+        ▼
+Inbound(purchase_code="PC-...", status=입고완료)
+```
+
+실제 발주 수량은 `MonthlyOrderPlan.order_qty` 프로퍼티(= `user_modified_qty`)로
+읽는다. 실무자가 조정한 값이 시스템 제안보다 우선한다.
+
+한 발주월에 같은 품목을 여러 건으로 쪼개 주문하는 운영이 생기면 그때 별도
+테이블을 되살린다. **쓰이지 않는 테이블을 미리 들고 가지 않는다** — 반쯤
+구현된 채로 남아 어느 쪽이 진실인지 흐려진다.
 
 ### Firestore 를 전제로 했다가 **철회한** 것
 
@@ -172,7 +190,8 @@ SQLite 에는 네이티브 DECIMAL 이 없어 float64 를 경유하고, 유효�
 ## 6. 구 AGENTS.md 에서 살릴 업무 규칙
 
 원본은 커밋 `57c80d9` 의 `.agents/AGENTS.md` (227줄). 아키텍처 설명은 이번
-개편으로 무효가 됐고, 아래만 유효하다. **Phase 7 에서 루트 `CLAUDE.md` 로 옮긴다.**
+개편으로 무효가 됐고, 아래만 유효하다. 요약본은 이미 루트 `CLAUDE.md` 에 있으며,
+여기에는 근거와 세부를 남긴다.
 
 ### 6.1 재고일수 히트맵 (3개월 = 13주 적정)
 
@@ -235,7 +254,7 @@ cp .env.example .env
 
 .venv/Scripts/python.exe -m alembic upgrade head
 .venv/Scripts/python.exe -m scripts.seed_dev
-.venv/Scripts/python.exe -m pytest              # 143개 통과해야 정상
+.venv/Scripts/python.exe -m pytest              # 147개 통과해야 정상
 ```
 
 서버 실행 — `start_server.bat` 더블클릭, 또는:
@@ -256,16 +275,11 @@ cp .env.example .env
 
 ---
 
-## 8. 사용자에게 물어봐야 할 것 (미결)
+## 8. 미결 사항
 
-1. **`.agents/AGENTS.md` 삭제 확정 여부** — 현재 working tree 에서 삭제된 상태로
-   커밋되지 않고 남아 있다 (§1)
-2. **`PurchaseOrder` 유지 여부** — 구 `PRODUCTION_DB`(생산)는 제거했다. 3단계
-   매칭이 이미 폐기된 기능이라 판단했으나, 되살려야 하면 알려달라
-3. **Firebase Data Connect vs 일반 관리형 Postgres** — FastAPI 를 앞에 두면
-   Data Connect 의 GraphQL·SDK·Security Rules 를 거의 안 쓰게 된다. 사내 사정이
-   있으면 그대로 가되, 없다면 Cloud SQL 이 더 단순하고 저렴하다.
-   설계는 양쪽 동일하므로 나중에 정해도 코드 변경은 없다
+없음. 이전에 열려 있던 3건은 D11 · D12 · D13 으로 정리됐다.
+
+새로 판단이 필요한 것이 생기면 여기에 적고, 결정되면 §4 로 옮긴다.
 
 ---
 
@@ -288,7 +302,7 @@ eibe/
 │   │   ├── types.py    ★ 금액 타입 — 반드시 여기 것만 쓴다
 │   │   ├── enums.py    CHECK 제약이 여기서 생성된다
 │   │   ├── master.py   brand · product · product_alias · warehouse · channel
-│   │   ├── scm.py      purchase_order · inbound · inventory_snapshot · monthly_order_plan
+│   │   ├── scm.py      inbound · inventory_snapshot · monthly_order_plan
 │   │   ├── sales.py    sales_order · promotion
 │   │   └── metrics.py  weekly_metric (파생)
 │   ├── services/
@@ -300,7 +314,7 @@ eibe/
 ├── scripts/
 │   ├── create_admin.py 운영용 계정 생성
 │   └── seed_dev.py     개발용 시드 (production 거부, 멱등)
-└── tests/              143개
+└── tests/              147개
 ```
 
 ### 접합점 — 이 두 개가 SCM 과 판매를 잇는 전부다

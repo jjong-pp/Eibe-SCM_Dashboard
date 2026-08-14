@@ -1,8 +1,8 @@
 """add unified domain model
 
-Revision ID: 8c883911c3d2
+Revision ID: a094e933b241
 Revises: 90ed1f8ea848
-Create Date: 2026-08-13 14:31:06.559998
+Create Date: 2026-08-14 09:13:06.108337
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = '8c883911c3d2'
+revision: str = 'a094e933b241'
 down_revision: str | None = '90ed1f8ea848'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -161,6 +161,8 @@ def upgrade() -> None:
     sa.Column('system_suggested_qty', sa.Integer(), nullable=False),
     sa.Column('user_modified_qty', sa.Integer(), nullable=False),
     sa.Column('status', sa.String(length=16), nullable=False),
+    sa.Column('purchase_code', sa.String(length=64), nullable=True),
+    sa.Column('note', sa.Text(), nullable=True),
     sa.Column('version', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
@@ -173,6 +175,7 @@ def upgrade() -> None:
     )
     with op.batch_alter_table('monthly_order_plan', schema=None) as batch_op:
         batch_op.create_index('ix_monthly_order_plan_arrival_month', ['arrival_month'], unique=False)
+        batch_op.create_index('ix_monthly_order_plan_purchase_code', ['purchase_code'], unique=False)
 
     op.create_table('product_alias',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -219,21 +222,6 @@ def upgrade() -> None:
         batch_op.create_index('ix_promotion_brand_id', ['brand_id'], unique=False)
         batch_op.create_index('ix_promotion_period', ['start_date', 'end_date'], unique=False)
         batch_op.create_index('ix_promotion_product_id', ['product_id'], unique=False)
-
-    op.create_table('purchase_order',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('order_month', sa.String(length=7), nullable=False),
-    sa.Column('product_id', sa.Integer(), nullable=False),
-    sa.Column('order_qty', sa.Integer(), nullable=False),
-    sa.Column('note', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-    sa.CheckConstraint('order_qty > 0', name=op.f('ck_purchase_order_purchase_order_qty_positive')),
-    sa.ForeignKeyConstraint(['product_id'], ['product.id'], name=op.f('fk_purchase_order_product_id_product')),
-    sa.PrimaryKeyConstraint('id', name=op.f('pk_purchase_order'))
-    )
-    with op.batch_alter_table('purchase_order', schema=None) as batch_op:
-        batch_op.create_index('ix_purchase_order_month_product', ['order_month', 'product_id'], unique=False)
 
     op.create_table('sales_order',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -332,10 +320,6 @@ def downgrade() -> None:
         batch_op.drop_index('ix_sales_order_brand_week')
 
     op.drop_table('sales_order')
-    with op.batch_alter_table('purchase_order', schema=None) as batch_op:
-        batch_op.drop_index('ix_purchase_order_month_product')
-
-    op.drop_table('purchase_order')
     with op.batch_alter_table('promotion', schema=None) as batch_op:
         batch_op.drop_index('ix_promotion_product_id')
         batch_op.drop_index('ix_promotion_period')
@@ -347,6 +331,7 @@ def downgrade() -> None:
 
     op.drop_table('product_alias')
     with op.batch_alter_table('monthly_order_plan', schema=None) as batch_op:
+        batch_op.drop_index('ix_monthly_order_plan_purchase_code')
         batch_op.drop_index('ix_monthly_order_plan_arrival_month')
 
     op.drop_table('monthly_order_plan')

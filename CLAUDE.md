@@ -78,7 +78,7 @@
 
 ```bash
 cd eibe
-.venv/Scripts/python.exe -m pytest                    # 143개 통과해야 정상
+.venv/Scripts/python.exe -m pytest                    # 147개 통과해야 정상
 .venv/Scripts/python.exe -m alembic upgrade head
 .venv/Scripts/python.exe -m scripts.seed_dev          # 개발 계정 + 샘플 데이터
 .venv/Scripts/python.exe -m uvicorn app.main:app --port 8000

@@ -27,7 +27,7 @@ from app.models.master import (
 )
 from app.models.metrics import WeeklyMetric
 from app.models.sales import Promotion, SalesOrder
-from app.models.scm import Inbound, InventorySnapshot, MonthlyOrderPlan, PurchaseOrder
+from app.models.scm import Inbound, InventorySnapshot, MonthlyOrderPlan
 
 __all__ = [
     # 기반
@@ -56,7 +56,6 @@ __all__ = [
     "Inbound",
     "InventorySnapshot",
     "MonthlyOrderPlan",
-    "PurchaseOrder",
     # 판매
     "Promotion",
     "SalesOrder",

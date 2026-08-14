@@ -32,25 +32,6 @@ from app.models.master import Product, Warehouse
 from app.models.types import Money, Rate, UnitPrice
 
 
-class PurchaseOrder(Base, TimestampMixin):
-    """발주. 계획(MonthlyOrderPlan)이 확정되어 실제로 나간 주문."""
-
-    __tablename__ = "purchase_order"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    order_month: Mapped[str] = mapped_column(String(7), nullable=False)  # YYYY-MM
-    product_id: Mapped[int] = mapped_column(ForeignKey("product.id"), nullable=False)
-    order_qty: Mapped[int] = mapped_column(Integer, nullable=False)
-    note: Mapped[str | None] = mapped_column(Text, default=None)
-
-    product: Mapped[Product] = relationship()
-
-    __table_args__ = (
-        CheckConstraint("order_qty > 0", name="purchase_order_qty_positive"),
-        Index("ix_purchase_order_month_product", "order_month", "product_id"),
-    )
-
-
 class Inbound(Base, TimestampMixin):
     """입고 (인보이스 통합).
 
@@ -153,10 +134,15 @@ class InventorySnapshot(Base, TimestampMixin):
 
 
 class MonthlyOrderPlan(Base, TimestampMixin):
-    """월별 발주 계획.
+    """월별 발주 계획이자 발주 그 자체.
 
-    발주 규칙상 리드타임을 고려해 6개월 뒤 도착분을 주문한다. 그래서
-    target_month(발주월)와 arrival_month(도착월)를 분리해 들고 있다.
+    발주는 월 1회이므로 계획과 실제 주문을 나눌 필요가 없다. 확정(CONFIRMED)된
+    계획이 곧 나간 주문이며, 발주번호는 purchase_code 에 적는다. 구 스키마는
+    ORDER_DB 와 MONTHLY_ORDER_PLAN 을 따로 뒀는데 같은 사실을 두 곳에 저장하는
+    구조여서 어느 쪽이 진실인지 알 수 없었다.
+
+    리드타임을 고려해 6개월 뒤 도착분을 주문하므로 target_month(발주월)와
+    arrival_month(도착월)를 분리해 들고 있다.
     """
 
     __tablename__ = "monthly_order_plan"
@@ -171,6 +157,11 @@ class MonthlyOrderPlan(Base, TimestampMixin):
     status: Mapped[PlanStatus] = mapped_column(
         String(16), default=PlanStatus.DRAFT, nullable=False
     )
+    # 확정 후 부여되는 발주번호. Inbound.purchase_code 와 같은 값이라
+    # 발주 → 입고 추적이 이어진다.
+    purchase_code: Mapped[str | None] = mapped_column(String(64), default=None)
+    note: Mapped[str | None] = mapped_column(Text, default=None)
+
     # 낙관적 잠금 — 다른 사용자가 먼저 수정했으면 409 로 되돌린다.
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
@@ -182,4 +173,15 @@ class MonthlyOrderPlan(Base, TimestampMixin):
         CheckConstraint("system_suggested_qty >= 0", name="monthly_order_plan_suggested_non_negative"),
         CheckConstraint("user_modified_qty >= 0", name="monthly_order_plan_modified_non_negative"),
         Index("ix_monthly_order_plan_arrival_month", "arrival_month"),
+        Index("ix_monthly_order_plan_purchase_code", "purchase_code"),
     )
+
+    @property
+    def is_ordered(self) -> bool:
+        """확정되어 실제 발주로 나갔는가."""
+        return self.status == PlanStatus.CONFIRMED
+
+    @property
+    def order_qty(self) -> int:
+        """실제 발주 수량. 실무자가 조정한 값이 시스템 제안보다 우선한다."""
+        return self.user_modified_qty

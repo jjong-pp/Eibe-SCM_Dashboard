@@ -16,11 +16,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.base import Base
-from app.models.enums import BrandCategory, InboundStatus, MetricSource, WarehouseType
+from app.models.enums import (
+    BrandCategory,
+    InboundStatus,
+    MetricSource,
+    PlanStatus,
+    WarehouseType,
+)
 from app.models.master import Brand, LogisticsCost, Product, ProductAlias
 from app.models.metrics import WeeklyMetric
 from app.models.sales import SalesOrder
-from app.models.scm import Inbound, InventorySnapshot
+from app.models.scm import Inbound, InventorySnapshot, MonthlyOrderPlan
 from app.models.types import Money
 from tests.factories import (
     make_alias,
@@ -321,6 +327,80 @@ class TestJoiningPoints:
         assert order.is_mapped is False
         # 원본이 남아 있어야 매핑 규칙을 고친 뒤 다시 해석할 수 있다
         assert order.source_product_name == "알 수 없는 제품"
+
+
+class TestOrderPlanIsTheOrder:
+    """구 스키마는 ORDER_DB(발주)와 MONTHLY_ORDER_PLAN(계획)을 따로 뒀다.
+
+    같은 사실이 두 곳에 있으면 어느 쪽이 진실인지 알 수 없다. 발주는 월 1회이므로
+    확정된 계획이 곧 주문이다.
+    """
+
+    def test_draft_plan_is_not_an_order_yet(self, db: Session) -> None:
+        brand = make_brand(db)
+        product = make_product(db, brand)
+        plan = MonthlyOrderPlan(
+            target_month="2026-08", product_id=product.id, user_modified_qty=500
+        )
+        db.add(plan)
+        db.commit()
+
+        assert plan.status == PlanStatus.DRAFT
+        assert plan.is_ordered is False
+
+    def test_confirmed_plan_carries_the_purchase_code(self, db: Session) -> None:
+        brand = make_brand(db)
+        product = make_product(db, brand)
+        plan = MonthlyOrderPlan(
+            target_month="2026-08",
+            arrival_month="2027-02",  # 리드타임 6개월
+            product_id=product.id,
+            system_suggested_qty=480,
+            user_modified_qty=500,
+            status=PlanStatus.CONFIRMED,
+            purchase_code="PC-H12PRO-01",
+        )
+        db.add(plan)
+        db.commit()
+
+        assert plan.is_ordered is True
+        assert plan.order_qty == 500  # 실무자 조정값이 시스템 제안보다 우선
+
+    def test_purchase_code_links_plan_to_inbound(self, db: Session) -> None:
+        """발주 → 입고 추적이 같은 발주번호로 이어진다."""
+        brand = make_brand(db)
+        product = make_product(db, brand)
+        warehouse = make_warehouse(db)
+        code = "PC-H12PRO-01"
+
+        db.add_all([
+            MonthlyOrderPlan(
+                target_month="2026-08", product_id=product.id,
+                user_modified_qty=500, status=PlanStatus.CONFIRMED,
+                purchase_code=code,
+            ),
+            Inbound(
+                product_id=product.id, arrival_warehouse_id=warehouse.id,
+                unit_qty=500, purchase_code=code,
+            ),
+        ])
+        db.commit()
+
+        plan = db.query(MonthlyOrderPlan).one()
+        inbound = (
+            db.query(Inbound).filter(Inbound.purchase_code == plan.purchase_code).one()
+        )
+        assert inbound.unit_qty == plan.order_qty
+
+    def test_one_plan_per_month_and_product(self, db: Session) -> None:
+        brand = make_brand(db)
+        product = make_product(db, brand)
+        db.add(MonthlyOrderPlan(target_month="2026-08", product_id=product.id))
+        db.commit()
+
+        db.add(MonthlyOrderPlan(target_month="2026-08", product_id=product.id))
+        with pytest.raises(IntegrityError):
+            db.commit()
 
 
 class TestDomainHelpers:
