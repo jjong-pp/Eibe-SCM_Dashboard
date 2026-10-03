@@ -1,0 +1,35 @@
+{
+  "next_id": 4,
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "정의되지 않은 CSS 변수 9곳 정리 (verify baseline 6건)",
+      "size": "S",
+      "owner": ["front"],
+      "status": "todo",
+      "passes": false,
+      "created": "2026-10-03",
+      "note": ".squad/verify-baseline.txt 항목. 고친 뒤 baseline에서 삭제"
+    },
+    {
+      "id": "T-002",
+      "title": "DB 마이그레이션 도구 도입 (Alembic, SQLite batch mode)",
+      "size": "L",
+      "owner": ["data"],
+      "status": "todo",
+      "passes": false,
+      "created": "2026-10-03",
+      "note": "현재 init_db의 create_all뿐이라 스키마 변경 이력이 없음. 정규화 작업 전 선행"
+    },
+    {
+      "id": "T-003",
+      "title": "사용하지 않는 jinja2 의존성 제거",
+      "size": "S",
+      "owner": ["back"],
+      "status": "todo",
+      "passes": false,
+      "created": "2026-10-03",
+      "note": "Jinja 템플릿은 이미 제거됨. requirements.txt에만 남음"
+    }
+  ]
+}

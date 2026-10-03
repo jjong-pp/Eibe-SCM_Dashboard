@@ -3,17 +3,27 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
 .env
+.pytest_cache/
+.ruff_cache/
 
 # Database & Data
-data/local_erp.db
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.db-journal
 data/backups/
+
+# AI 도구 개인 설정·런타임 상태
+CLAUDE.local.md
+AGENTS.override.md
+.claude/settings.local.json
+.claude/worktrees/
+.claude/agent-memory-local/
+.squad/state/
+.squad/artifacts/
 
 # OS generated files
 .DS_Store
 Thumbs.db
-
-# Dev-only scripts
-capture_screenshots.py
-fix_db.py
-remove_sidebar.py

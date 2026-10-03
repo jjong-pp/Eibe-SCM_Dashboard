@@ -1,0 +1,43 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/session_start.py", "timeout": 20 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|shell|exec_command|local_shell",
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/guard.py", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/post_edit.py", "timeout": 60, "statusMessage": "정적 검사" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/stop_gate.py", "timeout": 600, "statusMessage": "전체 검증" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "front|back|data",
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/stop_gate.py", "timeout": 600, "statusMessage": "전체 검증" }
+        ]
+      }
+    ]
+  }
+}

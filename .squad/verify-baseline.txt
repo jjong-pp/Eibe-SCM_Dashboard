@@ -1,0 +1,7 @@
+# verify.py 기존 결함 목록. 새 항목 추가는 사용자 승인 필요. 고친 항목은 삭제.
+web/expiry.html: 정의되지 않은 CSS 변수 --surface-hover
+web/static/css/style.css: 정의되지 않은 CSS 변수 --border-strong
+web/static/css/style.css: 정의되지 않은 CSS 변수 --shadow-md
+web/static/css/style.css: 정의되지 않은 CSS 변수 --surface-default
+web/static/css/style.css: 정의되지 않은 CSS 변수 --surface-sunken
+web/users.html: 정의되지 않은 CSS 변수 --bg-surface

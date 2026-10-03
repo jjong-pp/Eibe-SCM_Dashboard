@@ -13,7 +13,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 BASE_URL = "http://localhost:8000"
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "portfolio")
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "portfolio")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def get_driver():

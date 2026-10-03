@@ -11,8 +11,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 # ── 데이터베이스 파일 경로 ──────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
-DB_PATH = os.path.join(DATA_DIR, "local_erp.db")
-BACKUP_DIR = os.path.join(DATA_DIR, "backups")
+# SCM_DB_PATH: 테스트·QA용 별도 DB 지정 (미지정 시 운영 DB)
+DB_PATH = os.environ.get("SCM_DB_PATH") or os.path.join(DATA_DIR, "local_erp.db")
+BACKUP_DIR = os.environ.get("SCM_BACKUP_DIR") or os.path.join(DATA_DIR, "backups")
 
 # data/ 및 backups/ 디렉토리 자동 생성
 os.makedirs(DATA_DIR, exist_ok=True)

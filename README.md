@@ -203,6 +203,13 @@ python seed_data.py
 ```
 풍부한 샘플 데이터(품목, 창고, 입고 파이프라인, 재고 스냅샷, 출고 이력, 발주 계획)가 자동 생성됩니다.
 
+### 5. Test & Verify
+```bash
+pip install -r requirements-dev.txt
+python scripts/verify.py --tests
+```
+정적 검사(HTML 구조, CSS 변수, 금지 패턴) + ruff + pytest를 한 번에 실행합니다. 테스트는 임시 DB를 사용하며 운영 DB를 건드리지 않습니다.
+
 ---
 
 ## Project Structure
@@ -244,10 +251,15 @@ SCM-Dashboard/
 ├── data/
 │   └── local_erp.db              # SQLite database (auto-created)
 │
+├── tests/                        # pytest (temp DB + fixed seed)
+├── scripts/                      # verify, squad CLI, hooks, capture tools
+├── docs/                         # Spec & incident history
 ├── portfolio/                    # Screenshots & demo assets
+├── AGENTS.md / CLAUDE.md         # AI agent rules (Codex / Claude Code)
 ├── seed_data.py                  # Sample data seeder
 ├── start_server.bat              # One-click server launcher
-└── requirements.txt              # Python dependencies
+├── requirements.txt              # Python dependencies
+└── requirements-dev.txt          # pytest, ruff
 ```
 
 ---
@@ -271,8 +283,8 @@ http://localhost:8000/docs
 | `GET` | `/api/inbound` | 입고 리스트 조회 |
 | `GET` | `/api/orders` | 발주 목록 조회 |
 | `POST` | `/api/inbound/upload` | 입고 엑셀 업로드 |
-| `GET` | `/api/forecasting/simulation` | 발주 시뮬레이션 |
-| `POST` | `/api/system/snapshot` | DB 스냅샷 생성 |
+| `GET` | `/api/order-plan/simulation` | 발주 시뮬레이션 |
+| `POST` | `/api/snapshot/manual` | DB 스냅샷 생성 |
 
 ---
 

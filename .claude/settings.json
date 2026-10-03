@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "3",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/session_start.py", "timeout": 20 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/guard.py", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/post_edit.py", "timeout": 60 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/stop_gate.py", "timeout": 600 }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "front|back|data",
+        "hooks": [
+          { "type": "command", "command": "python scripts/hooks/stop_gate.py", "timeout": 600 }
+        ]
+      }
+    ]
+  }
+}

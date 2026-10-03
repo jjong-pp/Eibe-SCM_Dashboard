@@ -1,0 +1,7 @@
+# 프로젝트 설정. Codex에서 이 프로젝트를 trusted로 등록해야 적용된다.
+# 전역 기본값(~/.codex/config.toml)보다 우선한다. 어려운 작업만 세션에서 effort를 올린다.
+model_reasoning_effort = "medium"
+
+[agents]
+max_threads = 3
+max_depth = 1

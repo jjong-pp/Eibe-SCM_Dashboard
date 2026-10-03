@@ -88,7 +88,6 @@ def upload_inventory_snapshot(
     db: Session = Depends(get_db),
 ):
     """현재고 스냅샷 엑셀 업로드"""
-    import pandas as pd
 
     if not file.filename.endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="xlsx 파일만 업로드 가능합니다")
@@ -772,7 +771,6 @@ def simulate_inventory_transfer(
     db: Session = Depends(get_db),
 ):
     """이관 시뮬레이터 엑셀 업로드 및 검증"""
-    import pandas as pd
     
     if not file.filename.endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="xlsx 파일만 업로드 가능합니다")

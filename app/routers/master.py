@@ -104,7 +104,6 @@ def upload_products(
     db: Session = Depends(get_db),
 ):
     """품목 엑셀 업로드 (일괄 등록/갱신)"""
-    import pandas as pd
 
     content = file.file.read()
     try:

@@ -1,0 +1,13 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --disable-warnings"
+
+[tool.ruff]
+target-version = "py312"
+extend-exclude = ["venv", "scripts/capture_gifs.py"]
+
+[tool.ruff.lint]
+# 실제 오류 계열만 검사: 문법 오류, 미정의 이름, 중복 정의, 가변 기본 인자
+# 라우터가 star import를 쓰므로 F403/F405와 미사용 import(F401)는 제외
+select = ["E9", "F", "B006"]
+ignore = ["F401", "F403", "F405"]
