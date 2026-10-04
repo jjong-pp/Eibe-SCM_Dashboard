@@ -3,11 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>EIBE SCM | 입고 관리</title>
+=======
+    <title>SCM Dashboard | 파이프라인 매칭 시스템</title>
+>>>>>>> parent of 67e7123 (no message)
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .split-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-xl);
+            margin-top: var(--space-lg);
+        }
+        .upload-panel {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-lg);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-xl);
+        }
+    </style>
 </head>
 <body>
     <div class="app-wrapper">
+<<<<<<< HEAD
         
 
         <main class="main-content">
@@ -45,6 +67,76 @@
                             </thead>
                             <tbody></tbody>
                         </table>
+=======
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <div class="logo-icon">S</div>
+                <h1>SCM Dashboard</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/">대시보드</a>
+                <a href="/inventory">현재고 보유량</a>
+                <a href="/expiry">유통기한 상세</a>
+                <a href="/order-plan">발주 계획</a>
+                <a href="/matching" class="active">매칭 시스템</a>
+                <a href="/users">운영 (Admin)</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="sidebar-user-avatar">A</div>
+                    <div class="user-details">
+                        <span class="user-name" id="sidebar-user-name">로그인 필요</span>
+                        <span class="user-role" id="sidebar-user-role"></span>
+                    </div>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" onclick="Theme.toggle()">Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="alert-panel"></div>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">데이터 수집 파이프라인</h2>
+                </div>
+                <div class="card-body">
+                    <div class="upload-panel">
+                        <div>
+                            <h3 style="margin-bottom: 5px;">고정 양식 템플릿</h3>
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">제공된 템플릿을 다운로드하여 데이터를 작성 후 업로드하세요.</p>
+                        </div>
+                        <div style="flex: 1;"></div>
+                        <button class="btn btn--secondary" onclick="window.location.href='/api/excel/template'">양식 다운로드</button>
+                        <input type="file" id="excel-upload" accept=".xlsx" style="display: none;">
+                        <button class="btn btn--primary" onclick="document.getElementById('excel-upload').click()">엑셀 업로드</button>
+                    </div>
+
+                    <h2 class="card-title" style="margin-bottom: var(--space-md);">생산-인보이스 매칭 보드</h2>
+                    <div class="split-grid">
+                        <div class="card" style="box-shadow: none;">
+                            <div class="card-header"><h3 class="card-title">생산 완료 리스트 (Overview)</h3></div>
+                            <div class="card-body card-body--no-pad">
+                                <table class="data-table">
+                                    <thead><tr><th>품목</th><th>생산수량</th><th>제조년월</th></tr></thead>
+                                    <tbody>
+                                        <tr><td colspan="3"><div class="empty-state">대기중인 데이터 없음</div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card" style="box-shadow: none;">
+                            <div class="card-header"><h3 class="card-title">매입 인보이스 (Invoice)</h3></div>
+                            <div class="card-body card-body--no-pad">
+                                <table class="data-table">
+                                    <thead><tr><th>인보이스 번호</th><th>품목</th><th>수량</th></tr></thead>
+                                    <tbody>
+                                        <tr><td colspan="3"><div class="empty-state">대기중인 데이터 없음</div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+>>>>>>> parent of 67e7123 (no message)
                     </div>
                 </div>
             </div>
@@ -58,6 +150,7 @@
             currentBrand: 'ALL',
             productsDict: {},
             
+<<<<<<< HEAD
             async init() {
 
                 
@@ -207,6 +300,16 @@
             Toast.init();
             await BrandFilter.init('brand-filter', (val) => InboundPage.switchBrand(val));
             InboundPage.init();
+=======
+            document.getElementById('excel-upload').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                Toast.show('파일 업로드 기능은 백엔드 파싱 API 연동 후 작동합니다.', 'info');
+                // const formData = new FormData();
+                // formData.append('file', file);
+                // await API.post('/api/upload', formData) ...
+            });
+>>>>>>> parent of 67e7123 (no message)
         });
     </script>
 </body>

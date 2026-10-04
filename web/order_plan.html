@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EIBE SCM | 발주 계획</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="app-wrapper" id="order-plan-page">
+<<<<<<< HEAD
         
 
         <main class="main-content">
@@ -31,7 +31,54 @@
                         <button class="btn btn--primary" id="btn-save-order" onclick="OrderPlan.saveAll()">저장</button>
                         <button class="btn btn--danger" id="btn-delete-order" onclick="OrderPlan.deleteSelected()">삭제</button>
                         <button class="btn btn--secondary" onclick="window.location.href='/api/order-plan/export'">엑셀 다운로드</button>
+=======
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <div class="logo-icon">S</div>
+                <h1>SCM Dashboard</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/">대시보드</a>
+                <a href="/inventory">현재고 보유량</a>
+                <a href="/expiry">유통기한 상세</a>
+                <a href="/order-plan" class="active">발주 계획</a>
+                <a href="/matching">매칭 시스템</a>
+                <a href="/users">운영 (Admin)</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="sidebar-user-avatar">A</div>
+                    <div class="user-details">
+                        <span class="user-name" id="sidebar-user-name">로그인 필요</span>
+                        <span class="user-role" id="sidebar-user-role"></span>
                     </div>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" onclick="Theme.toggle()">Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <section class="card" style="margin-bottom: var(--space-xl);">
+                <div class="card-header">
+                    <h2 class="card-title">발주 대상 연월 선택</h2>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; align-items: center; gap: var(--space-lg);">
+                        <div style="min-width: 200px;">
+                            <select class="form-select" id="target-month">
+                                <option value="">선택하세요</option>
+                            </select>
+                        </div>
+                        <button class="btn btn--primary" id="btn-load-plan" onclick="OrderPlan.load()">불러오기</button>
+>>>>>>> parent of 67e7123 (no message)
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">발주 수량 편집 그리드</h2>
+                    <button class="btn btn--primary" id="btn-save-plan" onclick="OrderPlan.saveAll()">저장</button>
                 </div>
                 <div class="card-body card-body--no-pad">
                     <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:var(--space-md); padding:var(--space-md) var(--space-md) 0;">
@@ -43,9 +90,10 @@
                         <button class="btn btn--secondary btn--sm" onclick="OrderPlan.loadSavedPlans()" style="align-self:flex-end;">조회</button>
                     </div>
                     <div class="data-table-wrapper">
-                        <table class="data-table" id="order-input-table">
+                        <table class="data-table" id="order-plan-table">
                             <thead>
                                 <tr>
+<<<<<<< HEAD
                                     <th style="width:36px;"><input type="checkbox" id="order-check-all" onchange="OrderPlan.toggleAllChecks(this)"></th>
                                     <th>품목코드</th>
                                     <th>품목명</th>
@@ -94,12 +142,30 @@
                                         <input type="number" class="form-input order-qty-input" value="9600" min="0" step="2400" style="width: 130px; text-align: right;" oninput="OrderPlan.onQtyChange()" onchange="OrderPlan.onQtyChange()">
                                     </td>
                                     <td class="text-right mono" style="color: var(--text-muted);">0</td>
+=======
+                                    <th>품목 코드</th>
+                                    <th>품목명</th>
+                                    <th>시스템 제안 수량</th>
+                                    <th>실무자 수정 수량</th>
+                                    <th>차이</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6">
+                                        <div class="empty-state">
+                                            <p>대상 연월을 선택하고 불러오기 버튼을 클릭하세요.</p>
+                                        </div>
+                                    </td>
+>>>>>>> parent of 67e7123 (no message)
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </section>
+<<<<<<< HEAD
 
             <!-- 발주 이력 트렌드 -->
             <section class="card">
@@ -188,15 +254,16 @@
 
             </div> <!-- End Right Column -->
             </div> <!-- End Grid -->
+=======
+>>>>>>> parent of 67e7123 (no message)
         </main>
     </div>
 
     <div id="toast-container" class="toast-container"></div>
     <script src="/static/js/app.js"></script>
     <script>
-        let simChart = null;
-
         const OrderPlan = {
+<<<<<<< HEAD
             currentBrand: 'ALL',
             simData: [],
             weightFactor: 1.0,
@@ -614,10 +681,55 @@
                                        oninput="OrderPlan.onQtyChange()" onchange="OrderPlan.onQtyChange()">
                             </td>
                             <td class="text-right mono" style="color: var(--text-muted);">0</td>
+=======
+            plans: [],
+            initMonthSelector() {
+                const select = document.getElementById('target-month');
+                const now = new Date();
+                for (let i = -2; i <= 6; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                    const val = d.toISOString().substring(0, 7);
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.textContent = val;
+                    select.appendChild(opt);
+                }
+            },
+            async load() {
+                const month = document.getElementById('target-month').value;
+                if (!month) { Toast.show('대상 연월을 선택하세요'); return; }
+                try {
+                    this.plans = await API.get(`/api/order-plan?target_month=${month}`);
+                    this.render();
+                    Toast.show(`${month} 발주 계획 로드 완료`);
+                } catch (err) { Toast.show('발주 계획 로드 실패'); }
+            },
+            render() {
+                const tbody = document.querySelector('#order-plan-table tbody');
+                if (!this.plans.length) {
+                    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>해당 월의 발주 계획이 없습니다.</p></div></td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = this.plans.map(plan => {
+                    const diff = plan.user_modified_qty - plan.system_suggested_qty;
+                    const diffClass = diff > 0 ? 'badge--warning' : diff < 0 ? 'badge--danger' : 'badge--primary';
+                    const diffText = diff > 0 ? `+${Format.number(diff)}` : diff < 0 ? Format.number(diff) : '±0';
+                    return `
+                        <tr data-plan-id="${plan.plan_id}">
+                            <td style="font-family: var(--font-mono);">${plan.product_id}</td>
+                            <td>-</td>
+                            <td style="font-family: var(--font-mono);">${Format.number(plan.system_suggested_qty)}</td>
+                            <td>
+                                <input type="number" class="form-input" value="${plan.user_modified_qty}" data-plan-id="${plan.plan_id}" style="width: 140px; text-align: right;" onchange="OrderPlan.markModified(this)">
+                            </td>
+                            <td><span class="badge ${diffClass}">${diffText}</span></td>
+                            <td><span class="badge badge--primary">저장됨</span></td>
+>>>>>>> parent of 67e7123 (no message)
                         </tr>`;
                 }).join('');
                 this.updateDiffColumn();
             },
+<<<<<<< HEAD
         };
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -636,6 +748,29 @@
                 OrderPlan.runSimulation();
             });
         });
+=======
+            markModified(input) {
+                const row = input.closest('tr');
+                row.querySelector('td:last-child').innerHTML = '<span class="badge badge--warning">수정됨</span>';
+            },
+            async saveAll() {
+                const inputs = document.querySelectorAll('#order-plan-table input[data-plan-id]');
+                let saved = 0;
+                for (const input of inputs) {
+                    const planId = input.dataset.planId;
+                    const qty = parseInt(input.value, 10);
+                    if (isNaN(qty) || qty < 0) continue;
+                    try {
+                        await API.post(`/api/order-plan/save?plan_id=${planId}`, { user_modified_qty: qty });
+                        saved++;
+                        input.closest('tr').querySelector('td:last-child').innerHTML = '<span class="badge badge--primary">저장 완료</span>';
+                    } catch (err) { Toast.show(`저장 실패: Plan #${planId}`); }
+                }
+                if (saved > 0) Toast.show(`${saved}건 저장 완료`);
+            }
+        };
+        document.addEventListener('DOMContentLoaded', () => { OrderPlan.initMonthSelector(); });
+>>>>>>> parent of 67e7123 (no message)
     </script>
 </body>
 </html>

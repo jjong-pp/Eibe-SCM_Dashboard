@@ -8,6 +8,7 @@
 </head>
 <body>
     <div class="app-wrapper">
+<<<<<<< HEAD
         
 
         <main class="main-content">
@@ -48,12 +49,46 @@
                         <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">조회 필터</div>
                         <div id="warehouse-filter-container" style="display: flex; gap: var(--space-md); flex-wrap: wrap;"></div>
                     </div>
+=======
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <div class="logo-icon">S</div>
+                <h1>SCM Dashboard</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/">대시보드</a>
+                <a href="/inventory">현재고 보유량</a>
+                <a href="/expiry" class="active">유통기한 상세</a>
+                <a href="/order-plan">발주 계획</a>
+                <a href="/matching">매칭 시스템</a>
+                <a href="/users">운영 (Admin)</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="sidebar-user-avatar">A</div>
+                    <div class="user-details">
+                        <span class="user-name" id="sidebar-user-name">로그인 필요</span>
+                        <span class="user-role" id="sidebar-user-role"></span>
+                    </div>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" onclick="Theme.toggle()">Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="alert-panel"></div>
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">FEFO 기반 유통기한 임박 및 폐기 예상</h2>
+                    <button class="btn btn--secondary" onclick="window.location.reload()">새로고침</button>
+>>>>>>> parent of 67e7123 (no message)
                 </div>
                 <div class="card-body card-body--no-pad">
                     <div class="data-table-wrapper">
                         <table class="data-table" id="expiry-table">
                             <thead>
                                 <tr>
+<<<<<<< HEAD
                                     <th>창고</th>
                                     <th>품명</th>
                                     <th id="expiry-th">기한</th>
@@ -62,6 +97,14 @@
                                     <th class="text-center">소진예상일</th>
                                     <th class="text-right">추가 필요 판매량 (캔수)</th>
                                     <th class="text-right">폐기 예상금액</th>
+=======
+                                    <th>거점</th>
+                                    <th>품목</th>
+                                    <th>잔여 수량 (캔)</th>
+                                    <th>유통기한</th>
+                                    <th>잔여일수</th>
+                                    <th>리스크 금액</th>
+>>>>>>> parent of 67e7123 (no message)
                                 </tr>
                             </thead>
                             <tbody>
@@ -172,9 +215,13 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             Theme.init();
+<<<<<<< HEAD
             Toast.init();
             await BrandFilter.init('brand-filter', (val) => ExpiryPage.switchBrand(val));
             ExpiryPage.init();
+=======
+            // TODO: Expiry calculation logic fetch from backend
+>>>>>>> parent of 67e7123 (no message)
         });
     </script>
 </body>

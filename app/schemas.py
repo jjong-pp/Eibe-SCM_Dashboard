@@ -92,7 +92,11 @@ class WarehouseCreate(BaseModel):
     warehouse_name: str = Field(..., description="창고명 (수정 불가)")
     warehouse_type: str = Field(default="ONLINE", pattern="^(ONLINE|OFFLINE|BUYOUT)$")
     allowed_expiry_days: int = Field(default=90, ge=0)
+<<<<<<< HEAD
     moq: int = Field(default=0, ge=0)
+=======
+    ffc_moq: int = Field(default=0, ge=0)
+>>>>>>> parent of 67e7123 (no message)
 
 class WarehouseUpdate(BaseModel):
     """창고 수정 — warehouse_name은 변경 불가"""
@@ -268,6 +272,7 @@ class InventorySnapshotCreate(BaseModel):
     qty_cans: int = Field(default=0, ge=0)
     updated_at: Optional[str] = None
 
+<<<<<<< HEAD
 class InventorySnapshotResponse(InventorySnapshotCreate):
     id: int
     class Config:
@@ -302,11 +307,14 @@ class OrderPlanResponse(BaseModel):
     updated_at: Optional[str] = None
     product_code: Optional[str] = None
     product_name: Optional[str] = None
+=======
+>>>>>>> parent of 67e7123 (no message)
     class Config:
         from_attributes = True
 
 
 # ═══════════════════════════════════════════════════════════════════════
+<<<<<<< HEAD
 # 매칭 요청
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -321,3 +329,20 @@ class MatchResponse(BaseModel):
     matched_order_id: Optional[int] = None
     matched_production_id: Optional[int] = None
     matched_inbound_id: Optional[int] = None
+=======
+# 공통 응답 스키마
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class MessageResponse(BaseModel):
+    message: str
+    detail: Optional[str] = None
+
+
+class FileUploadResponse(BaseModel):
+    message: str
+    filename: str
+    rows_processed: int
+    rows_inserted: int
+    rows_updated: int = 0
+>>>>>>> parent of 67e7123 (no message)

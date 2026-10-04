@@ -8,6 +8,7 @@
 </head>
 <body>
     <div class="app-wrapper">
+<<<<<<< HEAD
         
 
         <main class="main-content">
@@ -101,10 +102,71 @@
                             </thead>
                             <tbody></tbody>
                         </table>
+=======
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <div class="logo-icon">S</div>
+                <h1>SCM Dashboard</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/">대시보드</a>
+                <a href="/inventory">현재고 보유량</a>
+                <a href="/expiry">유통기한 상세</a>
+                <a href="/order-plan">발주 계획</a>
+                <a href="/matching">매칭 시스템</a>
+                <a href="/users" class="active">운영 (Admin)</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="sidebar-user-avatar">A</div>
+                    <div class="user-details">
+                        <span class="user-name" id="sidebar-user-name">로그인 필요</span>
+                        <span class="user-role" id="sidebar-user-role"></span>
+                    </div>
+                </div>
+                <button id="theme-toggle" class="theme-toggle" onclick="Theme.toggle()">Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="alert-panel"></div>
+            
+            <section class="content-grid content-grid--two">
+                <!-- User Management -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">사용자 관리</h2>
+                        <button class="btn btn--primary" onclick="Toast.show('계정 추가 기능 준비중', 'info')">+ 계정 추가</button>
+                    </div>
+                    <div class="card-body card-body--no-pad">
+                        <div class="data-table-wrapper">
+                            <table class="data-table" id="users-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>이름</th>
+                                        <th>역할</th>
+                                        <th>관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>admin</td>
+                                        <td>시스템 관리자</td>
+                                        <td><span class="badge badge--primary">ADMIN</span></td>
+                                        <td>
+                                            <button class="btn btn--secondary" style="padding: 2px 8px; font-size: 0.75rem;">편집</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+>>>>>>> parent of 67e7123 (no message)
                     </div>
                 </div>
             </section>
 
+<<<<<<< HEAD
             <!-- 이관 MOQ 관리 -->
             <section class="card section-gap settings-section" id="moq-section" style="display: none;">
                 <div class="card-header collapsible-header" id="moq-header" onclick="toggleCollapsible('moq-header')">
@@ -182,11 +244,41 @@
                             </thead>
                             <tbody></tbody>
                         </table>
+=======
+                <!-- Snapshot Management -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">DB 스냅샷 (백업) 이력</h2>
+                        <button class="btn btn--secondary" onclick="triggerManualSnapshot()">수동 스냅샷 생성</button>
+                    </div>
+                    <div class="card-body card-body--no-pad">
+                        <div class="data-table-wrapper">
+                            <table class="data-table" id="snapshot-table">
+                                <thead>
+                                    <tr>
+                                        <th>생성일시</th>
+                                        <th>파일경로</th>
+                                        <th>유형</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="3">
+                                            <div class="empty-state">
+                                                <p>스냅샷 이력이 없습니다.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+>>>>>>> parent of 67e7123 (no message)
                     </div>
                 </div>
             </section>
         </main>
     </div>
+<<<<<<< HEAD
 
     <script src="/static/js/app.js"></script>
     <script>
@@ -538,6 +630,43 @@
             } else {
                 body.style.display = 'none';
                 if(icon) icon.textContent = '▲';
+=======
+    <div id="toast-container" class="toast-container"></div>
+    <script src="/static/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            Theme.init();
+            loadSnapshots();
+        });
+
+        async function loadSnapshots() {
+            try {
+                // 이 API는 인증이 필요하지만 현재 UI 상 인증 토큰 주입 로직은 app.js에 추가 예정
+                const res = await API.get('/api/snapshot/list');
+                const tbody = document.querySelector('#snapshot-table tbody');
+                if (res && res.length > 0) {
+                    tbody.innerHTML = res.map(snap => `
+                        <tr>
+                            <td>${snap.created_at}</td>
+                            <td>${snap.snapshot_path.split(/\\|\//).pop()}</td>
+                            <td>${snap.is_auto ? '<span class="badge badge--primary">자동</span>' : '<span class="badge badge--warning">수동</span>'}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function triggerManualSnapshot() {
+            try {
+                Toast.show('스냅샷 생성 중...', 'info');
+                const res = await API.post('/api/snapshot/manual');
+                Toast.show('스냅샷 생성 완료', 'success');
+                loadSnapshots();
+            } catch (err) {
+                Toast.show('스냅샷 생성 실패 (관리자 권한 필요)', 'error');
+>>>>>>> parent of 67e7123 (no message)
             }
         }
     </script>

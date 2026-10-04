@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
 엑셀 양식 생성 및 파싱 모듈
 - 기능별 개별 다운로드 + 전체 일괄 다운로드
@@ -6,12 +7,13 @@
 - '마스터' → 'DB' 워딩 교체
 """
 
+=======
+>>>>>>> parent of 67e7123 (no message)
 import os
 import pandas as pd
 from io import BytesIO
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
 
+<<<<<<< HEAD
 
 # ── 공통 스타일 ──────────────────────────────────────────────────
 HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
@@ -98,28 +100,52 @@ TEMPLATE_LABELS = {
 
 
 def generate_template(template_type: str = "all") -> BytesIO:
+=======
+def generate_template() -> BytesIO:
+>>>>>>> parent of 67e7123 (no message)
     """고정 엑셀 양식 템플릿 생성"""
     output = BytesIO()
-
-    if template_type == "all":
-        types_to_generate = list(TEMPLATE_DEFS.keys())
-    elif template_type in TEMPLATE_DEFS:
-        types_to_generate = [template_type]
-    else:
-        raise ValueError(f"지원하지 않는 템플릿 유형: {template_type}")
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        for t_type in types_to_generate:
-            tdef = TEMPLATE_DEFS[t_type]
-            pd.DataFrame(columns=tdef["columns"]).to_excel(
-                writer, sheet_name=tdef["sheet_name"], index=False
-            )
-            ws = writer.sheets[tdef["sheet_name"]]
-            _apply_sheet_style(ws, tdef["columns"], tdef.get("example"))
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # 1. 상품마스터
+        pd.DataFrame(columns=[
+            '품목코드', '품목명', '카툰당입수량', '연간고정단가', '허브MOQ'
+        ]).to_excel(writer, sheet_name='상품마스터', index=False)
+        
+        # 2. 거점마스터
+        pd.DataFrame(columns=[
+            '거점코드', '거점명', '거점타입(ONLINE/OFFLINE/BUYOUT)', '허용유통기한일수', '거점MOQ'
+        ]).to_excel(writer, sheet_name='거점마스터', index=False)
+        
+        # 3. 물류비마스터
+        pd.DataFrame(columns=[
+            '출발거점코드', '도착거점코드', '카툰당물류비'
+        ]).to_excel(writer, sheet_name='물류비마스터', index=False)
+        
+        # 4. 생산완료 (Overview)
+        pd.DataFrame(columns=[
+            '생산년월코드', '발주코드', '품목코드', '생산완료수량', '제조년월(YYYY-MM)', '유통기한(YYYY-MM-DD)'
+        ]).to_excel(writer, sheet_name='생산완료', index=False)
+        
+        # 5. 매입인보이스 (Invoice)
+        pd.DataFrame(columns=[
+            '인보이스번호', '선하증권(BL)번호', '품목코드', '카툰수(TU)', '낱개수량(Can)', 
+            '선적일(YYYY-MM-DD)', '한국도착일', '결제기일', '결제환율'
+        ]).to_excel(writer, sheet_name='매입인보이스', index=False)
+        
+        # 6. 입고예정
+        pd.DataFrame(columns=[
+            '참조번호(BL등)', '품목코드', '입고예정수량', '국내도착예정일(YYYY-MM-DD)', '상태(IN_TRANSIT/CUSTOMS)'
+        ]).to_excel(writer, sheet_name='입고예정', index=False)
+        
+        # 7. 현재고스냅샷
+        pd.DataFrame(columns=[
+            '거점코드', '입고인보이스번호', '현재고수량(캔)'
+        ]).to_excel(writer, sheet_name='현재고스냅샷', index=False)
 
     output.seek(0)
     return output
 
+<<<<<<< HEAD
 
 def get_template_filename(template_type: str) -> str:
     """템플릿 타입에 해당하는 파일명 반환"""
@@ -193,16 +219,27 @@ def parse_excel_file(file_bytes: bytes, template_type: str = None) -> list:
                 results.append(item)
                 
         return results
+=======
+def parse_excel_file(file_path: str) -> dict:
+    """
+    업로드된 엑셀 파일을 읽어 각 시트별 DataFrame을 dict로 반환
+    """
+    try:
+        # 모든 시트를 읽어옴 (None 전달 시 dictionary 반환)
+        dfs = pd.read_excel(file_path, sheet_name=None, engine='openpyxl')
+        return dfs
+>>>>>>> parent of 67e7123 (no message)
     except Exception as e:
         print(f"Excel parsing error: {e}")
         raise ValueError(f"엑셀 파일을 파싱하는 데 실패했습니다: {e}")
-
 
 def validate_dataframe(df: pd.DataFrame, expected_columns: list) -> bool:
     """DataFrame 컬럼 검증"""
     if df.empty:
         return False
+    # 예상 컬럼들이 모두 존재하는지 확인
     return all(col in df.columns for col in expected_columns)
+<<<<<<< HEAD
 
 
 def parse_inventory_excel(file_bytes: bytes) -> list:
@@ -271,3 +308,5 @@ def generate_order_plan_export(plan_data: list) -> BytesIO:
 
     output.seek(0)
     return output
+=======
+>>>>>>> parent of 67e7123 (no message)
