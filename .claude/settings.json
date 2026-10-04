@@ -8,7 +8,7 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "python scripts/hooks/session_start.py", "timeout": 20 }
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/session_start.py\"", "timeout": 20 }
         ]
       }
     ],
@@ -16,7 +16,7 @@
       {
         "matcher": "Bash|PowerShell",
         "hooks": [
-          { "type": "command", "command": "python scripts/hooks/guard.py", "timeout": 10 }
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard.py\"", "timeout": 10 }
         ]
       }
     ],
@@ -24,14 +24,14 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "python scripts/hooks/post_edit.py", "timeout": 60 }
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/post_edit.py\"", "timeout": 60 }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python scripts/hooks/stop_gate.py", "timeout": 600 }
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/stop_gate.py\"", "timeout": 600 }
         ]
       }
     ],
@@ -39,7 +39,7 @@
       {
         "matcher": "front|back|data",
         "hooks": [
-          { "type": "command", "command": "python scripts/hooks/stop_gate.py", "timeout": 600 }
+          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/stop_gate.py\"", "timeout": 600 }
         ]
       }
     ]

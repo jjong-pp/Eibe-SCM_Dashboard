@@ -1,6 +1,7 @@
 """SessionStart: 새 세션에 스쿼드 현황을 짧게 주입한다 (진행 중 작업, 최근 검증, police 경고)."""
 
 import json
+import re
 import sys
 
 from _common import ROOT, STATE, emit, load_state
@@ -40,9 +41,22 @@ def police_warnings() -> int:
     return sum(1 for ln in text.splitlines() if "| 미해결 |" in ln)
 
 
+def handoff_lines() -> list:
+    """이전현황.md의 머리 줄과 '다음 채팅에서 할 일' 앞부분 (기기 간 인계)."""
+    try:
+        text = (ROOT / "이전현황.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    stamp = next((ln.strip("> ").strip() for ln in text.splitlines() if ln.startswith("> 갱신")), "")
+    m = re.search(r"^## \d+\. 다음 채팅에서 할 일\s*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    todo = [ln for ln in (m.group(1).splitlines() if m else []) if re.match(r"^\d+\. ", ln)][:5]
+    return [f"[이전현황] {stamp} -> 이전현황.md, resume 스킬 B 절차로 시작", *todo]
+
+
 def main() -> int:
     attempts = load_state("gate.json").get("attempts", 0)
-    lines = ["[squad] 현황 (상세: .squad/)", "열린 작업:", *backlog_lines(), f"최근 검증: {last_verify()}"]
+    lines = [*handoff_lines(), "[squad] 현황 (상세: .squad/)", "열린 작업:", *backlog_lines(),
+             f"최근 검증: {last_verify()}"]
     if attempts:
         lines.append(f"검증 연속 실패 {attempts}회 진행 중")
     warnings = police_warnings()

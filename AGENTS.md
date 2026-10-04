@@ -22,6 +22,7 @@
 | `scripts/` | verify.py(검증), squad.py(스쿼드 운영), sync_agents.py, hooks/ |
 | `.agents/` | 역할(roles)·스킬(skills) 원본 |
 | `.squad/` | 작업 기록: brief, backlog, contracts, reports, progress, lessons |
+| `이전현황.md` | 기기 간 인계 기록 (현재 상태, 다음 할 일) |
 
 ## 명령어
 - 서버: `start_server.bat` 또는 `venv\Scripts\python -m uvicorn app.main:app --port 8000`
@@ -30,6 +31,11 @@
 - 시드: `venv\Scripts\python seed_data.py` (기존 데이터 삭제. `SCM_DB_PATH`로 대상 DB 지정)
 - 스쿼드 현황: `python scripts/squad.py status`
 - API 무응답이면 코드보다 먼저 uvicorn 프로세스를 종료하고 재시작한다 (dev-server 스킬)
+
+## 기기 간 인계
+여러 PC에서 같은 상황을 이어서 작업한다. 기준 파일은 루트 `이전현황.md`다. AI 도구의 메모리는 PC마다 따로라 공유되지 않는다.
+- 사용자가 "이전현황 기록", "현황 정리", "인수인계"를 요청하면 **매번** `resume` 스킬 A 절차로 갱신하고 커밋한다
+- 새 채팅이나 다른 PC에서 시작하면 `resume` 스킬 B 절차로 상태를 맞춘 뒤 "다음 채팅에서 할 일"부터 진행한다
 
 ## 수정 원칙
 1. 함수·변수·CSS 클래스·DOM id·API 필드·DB 컬럼을 바꾸면 전체 참조를 찾아 함께 고친다 (impact-check 스킬)
