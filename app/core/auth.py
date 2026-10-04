@@ -1,27 +1,34 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import UserAccount
 from app.schemas import TokenData
+import bcrypt
 
 # 보안 설정 (로컬 환경용)
 SECRET_KEY = "scmdashboard_super_secret_key_for_local_env"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 12  # 12시간 유지
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """비밀번호 검증 - bcrypt 직접 호출"""
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    )
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    """비밀번호 해싱 - bcrypt 직접 호출"""
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()

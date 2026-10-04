@@ -13,7 +13,6 @@
 </head>
 <body>
     <div class="app-wrapper">
-<<<<<<< HEAD
         
 
         <main class="main-content">
@@ -55,49 +54,15 @@
                         <button class="btn btn--primary btn--sm" onclick="InventoryPage.addInlineRow()">+ 행 추가</button>
                         <button class="btn btn--secondary btn--sm" onclick="InventoryPage.load()">새로고침</button>
                     </div>
-=======
-        <aside class="app-sidebar">
-            <div class="sidebar-brand">
-                <div class="logo-icon">S</div>
-                <h1>SCM Dashboard</h1>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="/">대시보드</a>
-                <a href="/inventory" class="active">현재고 보유량</a>
-                <a href="/expiry">유통기한 상세</a>
-                <a href="/order-plan">발주 계획</a>
-                <a href="/matching">매칭 시스템</a>
-                <a href="/users">운영 (Admin)</a>
-            </nav>
-            <div class="sidebar-footer">
-                <div class="user-info">
-                    <div class="user-avatar" id="sidebar-user-avatar">A</div>
-                    <div class="user-details">
-                        <span class="user-name" id="sidebar-user-name">로그인 필요</span>
-                        <span class="user-role" id="sidebar-user-role"></span>
-                    </div>
-                </div>
-                <button id="theme-toggle" class="theme-toggle" onclick="Theme.toggle()">Dark Mode</button>
-            </div>
-        </aside>
-
-        <main class="main-content">
-            <div id="alert-panel"></div>
-            <section class="card">
-                <div class="card-header">
-                    <h2 class="card-title">현재고 상세 (거점별)</h2>
-                    <button class="btn btn--secondary" onclick="window.location.reload()">새로고침</button>
->>>>>>> parent of 67e7123 (no message)
                 </div>
                 <div class="card-body" style="padding-bottom: 0;">
                     <div class="checkbox-filter-group" id="ffc-checkbox-filter"></div>
                 </div>
                 <div class="card-body card-body--no-pad">
                     <div class="data-table-wrapper">
-                        <table class="data-table" id="inventory-full-table">
+                        <table class="data-table" id="inventory-detail-table">
                             <thead>
                                 <tr>
-<<<<<<< HEAD
                                     <th data-sort="string">창고</th>
                                     <th data-sort="string">품목코드</th>
                                     <th data-sort="string">품목명</th>
@@ -143,22 +108,6 @@
                             </thead>
                             <tbody>
                                 <tr><td colspan="6" class="empty-state">이관 시나리오 엑셀을 업로드해주세요.</td></tr>
-=======
-                                    <th>거점</th>
-                                    <th>품목코드</th>
-                                    <th>현재고 (캔)</th>
-                                    <th>업데이트 일시</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="4">
-                                        <div class="empty-state">
-                                            <p>데이터가 없습니다.</p>
-                                        </div>
-                                    </td>
-                                </tr>
->>>>>>> parent of 67e7123 (no message)
                             </tbody>
                         </table>
                     </div>
@@ -167,7 +116,6 @@
 
         </main>
     </div>
-<<<<<<< HEAD
 
     <!-- 재고 관리(추가/수정) 모달 -->
 
@@ -461,29 +409,6 @@
                     // API handler shows error
                 }
             });
-=======
-    <div id="toast-container" class="toast-container"></div>
-    <script src="/static/js/app.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            Theme.init();
-            try {
-                const res = await API.get('/api/inventory');
-                const tbody = document.querySelector('#inventory-full-table tbody');
-                if (res && res.length > 0) {
-                    tbody.innerHTML = res.map(inv => `
-                        <tr>
-                            <td>거점 ${inv.ffc_id}</td>
-                            <td>품목 ${inv.inbound_id} (매핑 필요)</td>
-                            <td><span style="font-weight:600;">${inv.current_can_qty.toLocaleString()}</span></td>
-                            <td>${inv.last_updated || '-'}</td>
-                        </tr>
-                    `).join('');
-                }
-            } catch (err) {
-                console.error(err);
-            }
->>>>>>> parent of 67e7123 (no message)
         });
     </script>
 </body>

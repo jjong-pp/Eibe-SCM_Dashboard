@@ -71,22 +71,11 @@ class WarehouseDB(Base):
     """창고 DB — 거점코드 자동증가(노출 안 함), 창고명 수정 불가"""
     __tablename__ = "WAREHOUSE_DB"
 
-<<<<<<< HEAD
     id = Column(Integer, primary_key=True, autoincrement=True)     # 거점코드 (자동, 숨김)
     warehouse_name = Column(Text, unique=True, nullable=False)     # 창고명 (수정 불가)
     warehouse_type = Column(Text, nullable=False, default="ONLINE")
     allowed_expiry_days = Column(Integer, default=90)              # 허용 유통기한(일)
     moq = Column(Integer, default=0)                               # 이관 MOQ
-=======
-    __tablename__ = "FFC_MASTER"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    ffc_code = Column(Text, unique=True, nullable=False)            # 거점 코드 (예: HUB, FFC_ON)
-    ffc_name = Column(Text, nullable=False)                         # 거점 채널명
-    ffc_type = Column(Text, nullable=False)                         # ONLINE / OFFLINE / BUYOUT
-    allowed_expiry_days = Column(Integer, default=90)               # 허용 잔여 유통기한 임계일수
-    ffc_moq = Column(Integer, default=0)                            # 거점 이관 최소 수량
->>>>>>> parent of 67e7123 (no message)
 
     __table_args__ = (
         CheckConstraint(
@@ -101,7 +90,6 @@ class WarehouseDB(Base):
     arrival_costs = relationship("LogisticsCostDB", foreign_keys="LogisticsCostDB.arrival_wh_id", back_populates="arrival_wh")
 
 
-<<<<<<< HEAD
 class WarehouseProductMOQ(Base):
     """창고-품목별 이관 MOQ 오버라이드"""
     __tablename__ = "WAREHOUSE_PRODUCT_MOQ"
@@ -122,10 +110,6 @@ class WarehouseProductMOQ(Base):
 class LogisticsCostDB(Base):
     """구간별 물류비 DB"""
     __tablename__ = "LOGISTICS_COST_DB"
-=======
-class LogisticsCostMaster(Base):
-    """3.1.3. 구간별 물류비 마스터 테이블 - 거점 간 카툰당 물류 이동 단가"""
->>>>>>> parent of 67e7123 (no message)
 
     departure_wh_id = Column(Integer, ForeignKey("WAREHOUSE_DB.id"), primary_key=True)
     arrival_wh_id = Column(Integer, ForeignKey("WAREHOUSE_DB.id"), primary_key=True)
@@ -260,7 +244,6 @@ class MonthlyOrderPlan(Base):
     __tablename__ = "MONTHLY_ORDER_PLAN"
 
     plan_id = Column(Integer, primary_key=True, autoincrement=True)
-<<<<<<< HEAD
     target_month = Column(Text, nullable=False)
     arrival_month = Column(Text, nullable=True)
     product_id = Column(Integer, ForeignKey("PRODUCT_DB.id"), nullable=False)
@@ -268,13 +251,6 @@ class MonthlyOrderPlan(Base):
     user_modified_qty = Column(Integer, nullable=False, default=0)
     version = Column(Integer, default=1)
     updated_at = Column(Text)
-=======
-    target_month = Column(Text, nullable=False)                     # 발주 대상 연월 (YYYY-MM)
-    product_id = Column(Integer, ForeignKey("PRODUCT_MASTER.id"), nullable=False)
-    system_suggested_qty = Column(Integer, nullable=False)          # 시스템 제안 수량
-    user_modified_qty = Column(Integer, nullable=False)             # 실무자 수정 최종 수량
-    updated_at = Column(Text)                                       # 수정 일시
->>>>>>> parent of 67e7123 (no message)
 
     __table_args__ = (
         UniqueConstraint("target_month", "product_id", name="uq_month_product"),
